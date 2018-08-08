@@ -28,8 +28,10 @@ public:
 	void initPts(float* data, int len);
 	void initPtsTex(float* data, int len);
 	void setPt(uint index, float x1, float x2, float x3);
+
 	void drawBuffer(float *proj, float *model);
-	void drawBuffers(float *proj, float *model);
+	void drawBuffers(float *proj, float *model, float *view);
+
 	void setColor(float x1, float x2, float x3, float x4);
 	void setWidth(float w);
 	void setType(uint type);
@@ -42,6 +44,7 @@ public:
 	void setScale(float val);
 	void setSpecularStrength(float val);
 	void setDiffuseStrength(float val);
+	void setViewMatrix(const QMatrix4x4& view);
 
 	void setBlendStrength(int index, float val);
 	void setScale(int index, float val);
@@ -65,6 +68,7 @@ private:
 	int m_nrmInt;
 	int m_lhtInt;
 	int m_umodel;
+	int m_uview;
 	int m_uproj;
 	int m_eyeInt;
 	int m_useSpecInt;
@@ -77,6 +81,7 @@ private:
 	float m_color[4];
 	float m_light[3];
 	float m_eye[3];
+	float m_view[16];
 	std::vector<float> m_blendStrength;
 	std::vector<float> m_scales;
 	float m_specStrength;

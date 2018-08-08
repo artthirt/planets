@@ -9,67 +9,68 @@ glutils::glutils()
 
 ////////////////////////////////////////////
 
+const QString vlp =
+		"	mat3 normalMatrix = mat3((uModel));\n"
+		"	normal = normalize(normalMatrix * vNormal);\n"
+		"	_lp = normalize(lp);\n";
+
+const QString vlight =
+		"   vec3 ld = normalize(_lp);\n"
+		"   float diff = max(dot(normal, ld), 0);\n"
+		"	float spec = 0;\n";
+//		"   vec3 vd = normalize(eye - vec3(uModel * vPosition));\n"
+//		"   vec3 refd = reflect(-ld, vn);\n"
+//		"   spec = 0;//pow(max(dot(vd, refd), 0), 8);\n";
+
 const QString vshaderInstanced =
 		"#version 330 core\n"
 		"attribute vec4 vPosition;\n"
-		"attribute vec4 vNormal;\n"
+		"attribute vec3 vNormal;\n"
 		"attribute vec2 aTexCoord;\n"
+		"uniform mat4 uView;\n"
 		"uniform mat4 uModel;\n"
 		"uniform mat4 uProj;\n"
-		"uniform vec3 lp;\n"
 		"uniform vec3 eye;\n"
+		"uniform vec3 lp;\n"
 		"uniform float scale[%1];\n"
 		"uniform float blend[%1];\n"
+		"varying vec3 _lp;\n"
 		"varying vec2 vTexCoord;\n"
 		"varying float _blend;\n"
-		"varying float diff;\n"
-		"varying float spec;\n"
+		"varying vec3 normal;\n"
 		"void main(){\n"
+		+ vlp +
 		"   mat3 md = mat3(uModel);\n"
 		"	mat4 um = uModel;\n"
 		"	_blend = blend[gl_InstanceID];\n"
 		"	float sc = scale[gl_InstanceID];\n"
 		"	vec4 vp = vec4((1 + sc) * vec3(vPosition), vPosition.w);\n"
-		"   vec3 np = md * vec3(vp);\n"
-		"   vec3 ld= vec3(lp - np);\n"
-		"   ld = normalize(ld);\n"
-		"	vec3 vn = (md) * vec3(vNormal);\n"
-		"   diff = 1.4 * max(dot(vn, ld), 0);\n"
-		"   vec3 vd = normalize(eye - np);\n"
-		"   vec3 refd = reflect(-ld, vn);\n"
-		"   spec = pow(max(dot(vd, refd), 0), 8);\n"
 		"   vTexCoord = aTexCoord;\n"
-		"   gl_Position = uProj * uModel * vp;\n"
+		"   gl_Position = uProj * uView * uModel * vp;\n"
 		"}";
 
 const QString vshader =
 		"#version 330 core\n"
 		"attribute vec4 vPosition;\n"
-		"attribute vec4 vNormal;\n"
+		"attribute vec3 vNormal;\n"
 		"attribute vec2 aTexCoord;\n"
+		"uniform mat4 uView;\n"
 		"uniform mat4 uModel;\n"
 		"uniform mat4 uProj;\n"
 		"uniform vec3 lp;\n"
 		"uniform vec3 eye;\n"
 		"uniform float blend;\n"
+		"varying vec3 _lp;\n"
 		"varying vec2 vTexCoord;\n"
 		"varying float _blend;\n"
-		"varying float diff;\n"
-		"varying float spec;\n"
+		"varying vec3 normal;\n"
 		"void main(){\n"
+		+ vlp +
 		"   mat3 md = mat3(uModel);\n"
 		"	mat4 um = uModel;\n"
 		"	_blend = blend;\n"
-		"   vec3 np = md * vec3(vPosition);\n"
-		"   vec3 ld= vec3(lp - np);\n"
-		"   ld = normalize(ld);\n"
-		"	vec3 vn = (md) * vec3(vNormal);\n"
-		"   diff = 1.4 * max(dot(vn, ld), 0);\n"
-		"   vec3 vd = normalize(eye - np);\n"
-		"   vec3 refd = reflect(-ld, vn);\n"
-		"   spec = pow(max(dot(vd, refd), 0), 8);\n"
 		"   vTexCoord = aTexCoord;\n"
-		"   gl_Position = uProj * uModel * vPosition;\n"
+		"   gl_Position = uProj * uView * uModel * vPosition;\n"
 		"}";
 
 const QString fTexShaderSpecular =
@@ -83,13 +84,14 @@ const QString fTexShaderSpecular =
 			"uniform int useSpec;\n"
 			"uniform float specStrength;"
 			"uniform float diffStrength;"
+			"varying vec3 _lp;\n"
 			"varying float _blend;\n"
 			"varying vec2 vTexCoord;\n"
-			"varying float diff;\n"
-			"varying float spec;\n"
+			"varying vec3 normal;\n"
 			"void main(){\n"
 			"	vec4 spect = texture2D(uSpec, vTexCoord);\n"
 			"	vec4 tex = texture2D(uTexture, vTexCoord);\n"
+			+ vlight +
 			"	vec4 col =  uColor * ((diff * (1. - spect) + 0.04) * tex);\n"
 			"	col += uColor * (spect * (0.01 + (0.01 + specStrength * spec + diffStrength * diff)) * tex);\n"
 			"	gl_FragColor = col;\n"
@@ -106,12 +108,13 @@ const QString fTexShader =
 			"uniform int useSpec;\n"
 			"uniform float specStrength;"
 			"uniform float diffStrength;"
+			"varying vec3 _lp;\n"
 			"varying float _blend;\n"
 			"varying vec2 vTexCoord;\n"
-			"varying float diff;\n"
-			"varying float spec;\n"
+			"varying vec3 normal;\n"
 			"void main(){\n"
 			"	vec4 tex = texture2D(uTexture, vTexCoord);\n"
+			+ vlight +
 			"	vec4 col = uColor * (0.01 + (0.01 + specStrength * spec + diffStrength * diff) * tex);\n"
 			"	float at = (tex.r + tex.g + tex.b)/3;\n"
 			//"	at = at * at * at;\n"
@@ -315,6 +318,7 @@ void GLBuffer::initBuffer(QOpenGLFunctions_3_3_Core *self, bool tex, bool specul
 	m_texInt = m_shpr.attributeLocation("aTexCoord");
 	m_colInt = m_shpr.uniformLocation("uColor");
 	m_umodel = m_shpr.uniformLocation("uModel");
+	m_uview = m_shpr.uniformLocation("uView");
 	m_uproj = m_shpr.uniformLocation("uProj");
 	m_lhtInt = m_shpr.uniformLocation("lp");
 	m_eyeInt = m_shpr.uniformLocation("eye");
@@ -360,7 +364,7 @@ void GLBuffer::drawBuffer(float* proj, float *model)
 	m_shpr.release();
 }
 
-void GLBuffer::drawBuffers(float *proj, float *model)
+void GLBuffer::drawBuffers(float *proj, float *model, float *view)
 {
 	if(!m_self || !m_init || m_buffer.empty())
 		return;
@@ -382,6 +386,7 @@ void GLBuffer::drawBuffers(float *proj, float *model)
 
 	m_self->glUniformMatrix4fv(m_uproj, 1, false, proj);
 	m_self->glUniformMatrix4fv(m_umodel, 1, false, model);
+	m_self->glUniformMatrix4fv(m_uview, 1, false, view);
 
 	m_self->glUniform4f(m_colInt, m_color[0], m_color[1], m_color[2], m_color[3]);
 	m_self->glLineWidth(m_width);
@@ -513,6 +518,13 @@ void GLBuffer::setSpecularStrength(float val)
 void GLBuffer::setDiffuseStrength(float val)
 {
 	m_diffStrength = val;
+}
+
+void GLBuffer::setViewMatrix(const QMatrix4x4 &view)
+{
+	for(int i = 0; i < 16; ++i){
+		m_view[i] = view.data()[i];
+	}
 }
 
 void GLBuffer::setBlendStrength(int index, float val)

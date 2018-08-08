@@ -49,29 +49,49 @@ private:
 
 	QMatrix4x4 m_proj;
 	QMatrix4x4 m_model;
-	GLBuffer m_planet;
-	GLBuffer m_sattelite;
-	GLBuffer m_sattelite2;
-	GLBuffer m_sattelite3;
-	GLBuffer m_sattelite4;
+	GLBuffer m_io;
+	GLBuffer m_jupiter;
+	GLBuffer m_europa;
+	GLBuffer m_ceres;
+	GLBuffer m_uranus;
 
 	GLBuffer m_space;
 
 	float m_dist;
 	float m_speed;
 
-	GLBuffer m_sattBlend;
-	GLBuffer m_planetBlend;
-	GLBuffer m_satt4Blend;
+	GLBuffer m_jupiterBlend;
+	GLBuffer m_ioBlend;
+	GLBuffer m_uranusBlend;
+
+	QPoint m_mouse_pt;
+	float m_aX;
+	float m_aY;
+	bool m_mouse_down;
+	QVector3D m_positionCamera;
+
+	QMap<int, bool> m_keys;
 
 	void setViewport(float w, float h);
 
 	void drawAll();
 	void initBuffers();
+	void processKey();
 
 	void initBlend(GLBuffer& obj, int cnt1, int cnt2, float R,
 				   int countBlending, uint tex, float delta = 0.015f,
 				   int type = GL_TRIANGLE_STRIP);
+
+	// QWidget interface
+protected:
+	void mousePressEvent(QMouseEvent *event);
+	void mouseReleaseEvent(QMouseEvent *event);
+	void mouseMoveEvent(QMouseEvent *event);
+
+	// QWidget interface
+protected:
+	void keyPressEvent(QKeyEvent *event);
+	void keyReleaseEvent(QKeyEvent *event);
 };
 
 #endif // PLANETGL_H
