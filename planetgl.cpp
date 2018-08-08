@@ -145,26 +145,27 @@ QVector3D rotateY(float a, const QVector3D& v)
 
 void PlanetGL::processKey()
 {
+	float speed = 0.2f;
 	if(m_keys[Qt::Key_A]){
-		QVector3D v(-1, 0, 0);
+		QVector3D v(-speed, 0, 0);
 		v = rotateY(m_aY, v);
 		v = rotateX(-m_aX, v);
 		m_positionCamera += v;
 	}
 	if(m_keys[Qt::Key_W]){
-		QVector3D v(0, 0, 1);
+		QVector3D v(0, 0, speed);
 		v = rotateY(m_aY, v);
 		v = rotateX(-m_aX, v);
 		m_positionCamera += v;
 	}
 	if(m_keys[Qt::Key_S]){
-		QVector3D v(0, 0, -1);
+		QVector3D v(0, 0, -speed);
 		v = rotateY(m_aY, v);
 		v = rotateX(-m_aX, v);
 		m_positionCamera += v;
 	}
 	if(m_keys[Qt::Key_D]){
-		QVector3D v(1, 0, 0);
+		QVector3D v(speed, 0, 0);
 		v = rotateY(m_aY, v);
 		v = rotateX(-m_aX, v);
 		m_positionCamera += v;

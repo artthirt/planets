@@ -12,15 +12,19 @@ glutils::glutils()
 const QString vlp =
 		"	mat3 normalMatrix = mat3((uModel));\n"
 		"	normal = normalize(normalMatrix * vNormal);\n"
-		"	_lp = normalize(lp);\n";
+		"	vec4 pos = uModel * vPosition;\n"
+		"	_lp = lp;\n"
+		"	_eye = -vec3(pos);\n";
 
 const QString vlight =
 		"   vec3 ld = normalize(_lp);\n"
 		"   float diff = max(dot(normal, ld), 0);\n"
-		"	float spec = 0;\n";
-//		"   vec3 vd = normalize(eye - vec3(uModel * vPosition));\n"
-//		"   vec3 refd = reflect(-ld, vn);\n"
-//		"   spec = 0;//pow(max(dot(vd, refd), 0), 8);\n";
+		"	float spec = 0;\n"
+		"	vec3 e = normalize(_eye);\n;"
+		"   vec3 h = normalize(ld + e);\n"
+		"	// compute the specular term into spec\n"
+		"	float intSpec = max(dot(h, normal), 0.0);\n"
+		"   spec = pow(intSpec, 16);\n";
 
 const QString vshaderInstanced =
 		"#version 330 core\n"
@@ -38,6 +42,7 @@ const QString vshaderInstanced =
 		"varying vec2 vTexCoord;\n"
 		"varying float _blend;\n"
 		"varying vec3 normal;\n"
+		"varying vec3 _eye;\n"
 		"void main(){\n"
 		+ vlp +
 		"   mat3 md = mat3(uModel);\n"
@@ -64,6 +69,7 @@ const QString vshader =
 		"varying vec2 vTexCoord;\n"
 		"varying float _blend;\n"
 		"varying vec3 normal;\n"
+		"varying vec3 _eye;\n"
 		"void main(){\n"
 		+ vlp +
 		"   mat3 md = mat3(uModel);\n"
@@ -88,6 +94,7 @@ const QString fTexShaderSpecular =
 			"varying float _blend;\n"
 			"varying vec2 vTexCoord;\n"
 			"varying vec3 normal;\n"
+			"varying vec3 _eye;\n"
 			"void main(){\n"
 			"	vec4 spect = texture2D(uSpec, vTexCoord);\n"
 			"	vec4 tex = texture2D(uTexture, vTexCoord);\n"
@@ -112,6 +119,7 @@ const QString fTexShader =
 			"varying float _blend;\n"
 			"varying vec2 vTexCoord;\n"
 			"varying vec3 normal;\n"
+			"varying vec3 _eye;\n"
 			"void main(){\n"
 			"	vec4 tex = texture2D(uTexture, vTexCoord);\n"
 			+ vlight +
