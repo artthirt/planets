@@ -100,4 +100,7 @@ private:
 	bool m_is_use_tex2;
 };
 
+float A2R(float val);
+float R2A(float val);
+
 #endif // GLUTILS_H

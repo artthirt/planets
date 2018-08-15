@@ -72,6 +72,8 @@ private:
 
 	QMap<int, bool> m_keys;
 
+    int m_mode;
+
 	void setViewport(float w, float h);
 
 	void drawAll();

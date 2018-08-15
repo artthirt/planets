@@ -2,6 +2,8 @@
 
 #define _PI       3.14159265358979323846
 
+#include <math.h>
+
 glutils::glutils()
 {
 
@@ -648,4 +650,16 @@ size_t GLBuffer::countTextures() const
 size_t GLBuffer::countCountPoint() const
 {
 	return m_polycnt.size();
+}
+
+/////////////////////////////////
+
+float A2R(float val)
+{
+    return val * _PI / 180;
+}
+
+float R2A(float val)
+{
+    return val * 180 / _PI;
 }

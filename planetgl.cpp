@@ -21,6 +21,9 @@ PlanetGL::PlanetGL(QWidget *parent) :
 	m_dist = 0;
 	m_speed = 1;
 	m_mouse_down = false;
+    m_positionCamera[2] = -200;
+
+    m_mode = 0;
 
 	m_aX = 0;
 	m_aY = 0;
@@ -201,15 +204,15 @@ void PlanetGL::drawAll()
 
 	m_model.setToIdentity();
 
-	QVector3D eye(0, 0, 1);
-	eye = rotateY(m_aY, eye);
+    QVector3D eye(0, 0, 1);
+    eye = rotateY(m_aY, eye);
 	eye = rotateX(-m_aX, eye);
 
-	QMatrix4x4 mview;
+    QMatrix4x4 mview;
 	QMatrix4x4 model = m_model, model2, model3, model4;
 	float proj[16], mdl[16], mdlm[16], view[16];
 
-	mview.lookAt(eye, QVector3D(0, 0, 0), QVector3D(0, 1, 0));
+    mview.lookAt(eye, QVector3D(0, 0, 0), QVector3D(0, 1, 0));
 	cnv2arr(mview, view);
 
 	cnv2arr(m_proj, proj);
@@ -220,6 +223,13 @@ void PlanetGL::drawAll()
 	m_space.drawBuffers(proj, mdl, view);
 	glCullFace(GL_BACK);
 
+    if(m_mode == 0){
+
+    }else if(m_mode == 1){
+        float a = A2R(time - 190);
+        m_positionCamera[0] = 173 * sin(a);
+        m_positionCamera[2] = 173 * cos(a);
+    }
 	m_model.translate(m_positionCamera[0], m_positionCamera[1], m_positionCamera[2]);
 	model2 = model;
 
@@ -250,19 +260,19 @@ void PlanetGL::drawAll()
 		obj.drawBuffers(proj, mf, view);
 	};
 
-	func_rotate(m_jupiter, m_model, proj, view, time, 0, 0, -200);
-	func_rotate(m_io, m_model, proj, view, time - 100, 0, 170, -200, -time);
+    func_rotate(m_jupiter, m_model, proj, view, time, 0, 0, 0, -1.4 * time);
+    func_rotate(m_io, m_model, proj, view, time - 100, 0, 170, 0, -time);
 	for(int i = 0; i < 1; ++i)
-		func_rotate(m_europa, m_model, proj, view, 1.2 * time - 90 + i * 20, 10, 200, -200, 0.8 * time);
+        func_rotate(m_europa, m_model, proj, view, 1.2 * time - 90 + i * 20, 10, 200, 0, 0.8 * time);
 	for(int i = 0; i < 1; ++i)
-		func_rotate(m_ceres, m_model, proj, view, 0.8 * time - 130 + i * 20, -7, 150, -200, 0.7 * time);
+        func_rotate(m_ceres, m_model, proj, view, 0.8 * time - 130 + i * 20, -7, 150, 0, 0.7 * time);
 	for(int i = 0; i < 1; ++i)
-		func_rotate(m_uranus, m_model, proj, view, -1.4 * time + 30 + i * 20, -25, 450, -200, -5 * time);
+        func_rotate(m_uranus, m_model, proj, view, -1.4 * time + 30 + i * 20, -25, 450, 0, -5 * time);
 
 	glEnable(GL_BLEND);
-	func_rotate(m_uranusBlend, m_model, proj, view, -1.4f * time + 30, -25, 450, -200, -5 * time);
-	func_rotate(m_jupiterBlend, m_model, proj, view, time, 0, 0, -200);
-	func_rotate(m_ioBlend, m_model, proj, view, time - 100, 0, 170, -200, -time);
+    func_rotate(m_uranusBlend, m_model, proj, view, -1.4f * time + 30, -25, 450, 0, -5 * time);
+    func_rotate(m_jupiterBlend, m_model, proj, view, time, 0, 0, -0, -1.4 * time);
+    func_rotate(m_ioBlend, m_model, proj, view, time - 100, 0, 170, 0, -time);
 	glDisable(GL_BLEND);
 
 //	model2.rotate(30, 0, 0, 1);
@@ -521,6 +531,12 @@ void PlanetGL::mouseMoveEvent(QMouseEvent *event)
 void PlanetGL::keyPressEvent(QKeyEvent *event)
 {
 	m_keys[event->key()] = true;
+
+    if(event->key() == Qt::Key_M){
+        m_mode += 1;
+        if(m_mode > 1)
+            m_mode = 0;
+    }
 }
 
 void PlanetGL::keyReleaseEvent(QKeyEvent *event)
