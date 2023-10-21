@@ -1,6 +1,4 @@
 #include "planetgl.h"
-#include "ui_planetgl.h"
-
 #include <QMouseEvent>
 #include <QKeyEvent>
 
@@ -10,16 +8,12 @@ const float diffStrength = 0.8f;
 const float specStreangth1 = 0.5;
 const float specStreangth2 = 0.1;
 
-PlanetGL::PlanetGL(QWidget *parent) :
-	QGLWidget(parent),
-	QOpenGLFunctions_3_3_Core (),
-	ui(new Ui::PlanetGL)
+PlanetGL::PlanetGL() :
+    QOpenGLWindow(),
+    QOpenGLFunctions_3_3_Core ()
 {
-	ui->setupUi(this);
-
 	m_time = 0;
-	m_dist = 0;
-	m_speed = 1;
+    m_speed = 0.01;
 	m_mouse_down = false;
     m_positionCamera[2] = -200;
 
@@ -34,17 +28,10 @@ PlanetGL::PlanetGL(QWidget *parent) :
 
 	connect(&m_timer, SIGNAL(timeout()), this, SLOT(onTimeout()));
 	m_timer.start(15);
-
-	setMouseTracking(true);}
+}
 
 PlanetGL::~PlanetGL()
 {
-	delete ui;
-}
-
-void PlanetGL::setDistance(float val)
-{
-	m_dist = val;
 }
 
 void PlanetGL::setSpeed(float val)
@@ -54,15 +41,14 @@ void PlanetGL::setSpeed(float val)
 
 void PlanetGL::onTimeout()
 {
-	updateGL();
+    update();
 
 	m_time += 0.02;
 }
 
-
 void PlanetGL::initializeGL()
 {
-	QGLWidget::initializeGL();
+    QOpenGLWindow::initializeGL();
 
 	QOpenGLFunctions_3_3_Core::initializeOpenGLFunctions();
 
@@ -87,15 +73,13 @@ void PlanetGL::initializeGL()
 
 void PlanetGL::resizeGL(int w, int h)
 {
-	QGLWidget::resizeGL(w, h);
+    QOpenGLWindow::resizeGL(w, h);
 
 	setViewport(w, h);
 }
 
 void PlanetGL::paintGL()
 {
-	QGLWidget::paintGL();
-
 	drawAll();
 }
 
@@ -501,7 +485,6 @@ void PlanetGL::initBlend(GLBuffer &obj, int cnt1, int cnt2,
 
 void PlanetGL::mousePressEvent(QMouseEvent *event)
 {
-	setFocus();
 	m_mouse_pt = event->pos();
 	m_mouse_down = true;
 }

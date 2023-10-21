@@ -2,6 +2,7 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include "planetgl.h"
 
 namespace Ui {
 class MainWindow;
@@ -17,12 +18,11 @@ public:
 
 private slots:
 
-	void on_hs_dist_valueChanged(int value);
-
 	void on_hs_speed_valueChanged(int value);
 
 private:
 	Ui::MainWindow *ui;
+    PlanetGL mPlanetGL;
 };
 
 #endif // MAINWINDOW_H

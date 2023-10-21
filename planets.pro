@@ -25,17 +25,16 @@ CONFIG += c++11
 SOURCES += \
         main.cpp \
         mainwindow.cpp \
-    planetgl.cpp \
-    glutils.cpp
+    glutils.cpp \
+    planetgl.cpp
 
 HEADERS += \
         mainwindow.h \
-    planetgl.h \
-    glutils.h
+    glutils.h \
+    planetgl.h
 
 FORMS += \
-        mainwindow.ui \
-    planetgl.ui
+        mainwindow.ui
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin
