@@ -3,7 +3,7 @@
 
 #include <QWidget>
 #include <QOpenGLWindow>
-#include <QGLShaderProgram>
+#include <QOpenGLShaderProgram>
 #include <QOpenGLFunctions_3_3_Core>
 #include <QMatrix4x4>
 #include <QTimer>
@@ -35,7 +35,7 @@ protected:
 
 private:
 	QTimer m_timer;
-	QGLShaderProgram m_shpr;
+    QOpenGLShaderProgram m_shpr;
 
 	float m_time;
 

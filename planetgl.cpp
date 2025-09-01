@@ -362,11 +362,11 @@ void PlanetGL::initBuffers()
 	m_io.setEyePos(5000, 10, 10000);
 
 	QImage im;
-	im.load("../data/io_rgb_cyl.jpg");
-//	im.load("../data/8k_earth_daymap.jpg");
+    im.load(":/data/io_rgb_cyl.jpg");
+//	im.load(":/data/8k_earth_daymap.jpg");
 	uint ptex = m_io.initTexture(im);
 
-//	im.load("../data/8k_earth_specular_map.tif");
+//	im.load(":/data/8k_earth_specular_map.tif");
 //	m_planet.initTexture2(im);
 
 	initBlend(m_ioBlend, cnt1, cnt2, R, 40, ptex, 0.05);
@@ -382,7 +382,7 @@ void PlanetGL::initBuffers()
 	m_space.setLightPos(lp[0], lp[1], lp[2]);
 	m_space.setEyePos(5000, 10, 10000);
 
-	im.load("../data/8k_stars_milky_way.jpg");
+    im.load(":/data/8k_stars_milky_way.jpg");
 	m_space.initTexture(im);
 	/////////////
 
@@ -397,7 +397,7 @@ void PlanetGL::initBuffers()
 	m_jupiter.setLightPos(lp[0], lp[1], lp[2]);
 	m_jupiter.setEyePos(5000, 10, 10000);
 
-	im.load("../data/8k_jupiter.jpg");
+    im.load(":/data/8k_jupiter.jpg");
 	uint tex = m_jupiter.initTexture(im);
 
 	///////////
@@ -420,7 +420,7 @@ void PlanetGL::initBuffers()
 	m_uranus.setLightPos(lp[0], lp[1], lp[2]);
 	m_uranus.setEyePos(5000, 10, 10000);
 
-	im.load("../data/uranus.jpg");
+    im.load(":/data/uranus.jpg");
 	tex = m_uranus.initTexture(im);
 
 	initBlend(m_uranusBlend, cnt1, cnt2, R2 * 0.4f, 40, tex, 0.1);
@@ -437,7 +437,7 @@ void PlanetGL::initBuffers()
 	m_europa.setLightPos(lp[0], lp[1], lp[2]);
 	m_europa.setEyePos(5000, 10, 10000);
 
-	im.load("../data/ZZBiHOH.jpg");
+    im.load(":/data/ZZBiHOH.jpg");
 	m_europa.initTexture(im);
 
 	///////////////////
@@ -453,10 +453,10 @@ void PlanetGL::initBuffers()
 	m_ceres.setLightPos(lp[0], lp[1], lp[2]);
 	m_ceres.setEyePos(5000, 10, 10000);
 
-	im.load("../data/8k_ceres_fictional.jpg");
+    im.load(":/data/8k_ceres_fictional.jpg");
 	m_ceres.initTexture(im);
 
-//	im.load("../data/8k_earth_specular_map.tif");
+//	im.load(":/data/8k_earth_specular_map.tif");
 	//	m_planet.initTexture2(im);
 }
 

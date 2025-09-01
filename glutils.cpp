@@ -1,5 +1,8 @@
 #include "glutils.h"
 
+#include <QImage>
+#include <QPainter>
+
 #define _PI       3.14159265358979323846
 
 #include <math.h>
@@ -306,18 +309,18 @@ void GLBuffer::initBuffer(QOpenGLFunctions_3_3_Core *self, bool tex, bool specul
 	else
 		vvshader = vshader;
 
-	m_shpr.addShaderFromSourceCode(QGLShader::Vertex, vvshader);
+    m_shpr.addShaderFromSourceCode(QOpenGLShader::Vertex, vvshader);
 	if(tex){
 		if(lighting){
 			if(specularText)
-				m_shpr.addShaderFromSourceCode(QGLShader::Fragment, fTexShaderSpecular);
+                m_shpr.addShaderFromSourceCode(QOpenGLShader::Fragment, fTexShaderSpecular);
 			else
-				m_shpr.addShaderFromSourceCode(QGLShader::Fragment, fTexShader);
+                m_shpr.addShaderFromSourceCode(QOpenGLShader::Fragment, fTexShader);
 		}else{
-			m_shpr.addShaderFromSourceCode(QGLShader::Fragment, fTexNoLightShader);
+            m_shpr.addShaderFromSourceCode(QOpenGLShader::Fragment, fTexNoLightShader);
 		}
 	}else{
-		m_shpr.addShaderFromSourceCode(QGLShader::Fragment, fShader);
+        m_shpr.addShaderFromSourceCode(QOpenGLShader::Fragment, fShader);
 
 	}
 	m_shpr.link();

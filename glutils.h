@@ -3,7 +3,7 @@
 
 #include <QOpenGLFunctions_3_3_Core>
 #include <QMatrix4x4>
-#include <QGLShaderProgram>
+#include <QOpenGLShaderProgram>
 
 class glutils
 {
@@ -59,8 +59,8 @@ public:
 	size_t countTextures() const;
 	size_t countCountPoint() const;
 private:
-	QGLShaderProgram m_shpr;
-	QGLShaderProgram m_shpr2;
+    QOpenGLShaderProgram m_shpr;
+    QOpenGLShaderProgram m_shpr2;
 	int m_instancedCount;
 	int m_vecInt;
 	int m_texInt;

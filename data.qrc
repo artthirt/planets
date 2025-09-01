@@ -1,0 +1,28 @@
+<RCC>
+    <qresource prefix="/">
+        <file>data/2k_neptune.jpg</file>
+        <file>data/8k_ceres_fictional.jpg</file>
+        <file>data/8k_earth_clouds.jpg</file>
+        <file>data/8k_earth_daymap.jpg</file>
+        <file>data/8k_earth_normal_map.tif</file>
+        <file>data/8k_earth_specular_map.tif</file>
+        <file>data/8k_eris_fictional.jpg</file>
+        <file>data/8k_haumea_fictional.jpg</file>
+        <file>data/8k_jupiter.jpg</file>
+        <file>data/8k_makemake_fictional.jpg</file>
+        <file>data/8k_mars.jpg</file>
+        <file>data/8k_moon.jpg</file>
+        <file>data/8k_saturn.jpg</file>
+        <file>data/8k_saturn_ring_alpha.png</file>
+        <file>data/8k_stars.jpg</file>
+        <file>data/8k_stars_milky_way.jpg</file>
+        <file>data/io_rgb_cyl.jpg</file>
+        <file>data/io_truecolor_texture_map_8k_by_fargetanik-dbpxndx.jpg</file>
+        <file>data/jup1vss2.tif.zip</file>
+        <file>data/jup1vuu2.jpg.zip</file>
+        <file>data/jup2vss2.jpg.zip</file>
+        <file>data/sidorovs.eps</file>
+        <file>data/uranus.jpg</file>
+        <file>data/ZZBiHOH.jpg</file>
+    </qresource>
+</RCC>
