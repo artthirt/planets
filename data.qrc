@@ -2,6 +2,8 @@
     <qresource prefix="/">
         <file>data/2k_neptune.jpg</file>
         <file>data/8k_ceres_fictional.jpg</file>
+        <file>data/8k_eris_fictional.jpg</file>
+        <file>data/8k_haumea_fictional.jpg</file>
         <file>data/8k_earth_clouds.jpg</file>
         <file>data/8k_earth_daymap.jpg</file>
         <file>data/8k_jupiter.jpg</file>

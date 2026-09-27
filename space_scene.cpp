@@ -319,6 +319,31 @@ void SpaceScene::buildScene()
         m_bodies.push_back(ce);
     }
     {
+        Body ga;
+        ga.name = "Ganymede";
+        ga.radius = 1.5f;
+        ga.texture = ":/data/8k_eris_fictional.jpg";
+        ga.orbitRadius = 240.0f;
+        ga.orbitPeriod = 720.0f;
+        ga.orbitPhaseDeg = 300.0f;
+        ga.orbitInclDeg = 2.0f;
+        ga.spinPeriodDeg = 6.0f;
+        ga.specularStrength = 0.05f;
+        m_bodies.push_back(ga);
+    }
+    {
+        Body ca;
+        ca.name = "Callisto";
+        ca.radius = 1.35f;
+        ca.texture = ":/data/8k_haumea_fictional.jpg";
+        ca.orbitRadius = 290.0f;
+        ca.orbitPeriod = 1080.0f;
+        ca.orbitPhaseDeg = 130.0f;
+        ca.orbitInclDeg = -3.0f;
+        ca.spinPeriodDeg = 5.0f;
+        m_bodies.push_back(ca);
+    }
+    {
         Body ur;
         ur.name = "Uranus";
         ur.radius = 56.0f;
