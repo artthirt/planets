@@ -210,7 +210,7 @@ void SpaceScene::buildScene()
         io.radius = 1.0f;
         io.texture = ":/data/io_truecolor_texture_map_8k_by_fargetanik-dbpxndx.jpg";
         io.orbitRadius = 170.0f;
-        io.orbitPeriod = 72.0f;    // time units per full revolution
+        io.orbitPeriod = 288.0f;   // time units per full revolution
         io.orbitPhaseDeg = 200.0f;
         io.spinPeriodDeg = 10.0f;
         io.specularStrength = 0.1f;
@@ -222,7 +222,7 @@ void SpaceScene::buildScene()
         eu.radius = 1.3f;
         eu.texture = ":/data/ZZBiHOH.jpg";
         eu.orbitRadius = 200.0f;
-        eu.orbitPeriod = 108.0f;
+        eu.orbitPeriod = 432.0f;
         eu.orbitPhaseDeg = 40.0f;
         eu.orbitInclDeg = 4.0f;
         eu.spinPeriodDeg = 8.0f;
@@ -236,7 +236,7 @@ void SpaceScene::buildScene()
         ce.radius = 0.5f;
         ce.texture = ":/data/8k_ceres_fictional.jpg";
         ce.orbitRadius = 150.0f;
-        ce.orbitPeriod = 48.0f;
+        ce.orbitPeriod = 192.0f;
         ce.orbitPhaseDeg = 320.0f;
         ce.orbitInclDeg = -6.0f;
         ce.spinPeriodDeg = 14.0f;
@@ -248,7 +248,7 @@ void SpaceScene::buildScene()
         ur.radius = 56.0f;
         ur.texture = ":/data/uranus.jpg";
         ur.orbitRadius = 450.0f;
-        ur.orbitPeriod = 720.0f;   // ~12 min at 1x time
+        ur.orbitPeriod = 2880.0f;  // ~48 min at 1x time
         ur.orbitPhaseDeg = 240.0f;
         ur.orbitInclDeg = -25.0f;
         ur.spinPeriodDeg = 30.0f;
@@ -291,11 +291,12 @@ void SpaceScene::updateCamera(float dt)
         // follow mode: orbit the focused body
         const Body &b = m_bodies[m_focus];
 
-        // W/S or wheel adjust distance
+        // W/S or wheel adjust distance (frame-rate independent, ~1.5x per second)
+        const float zoom = std::exp(1.5f * dt);
         if (m_keys[Qt::Key_W])
-            m_focusDist = std::max(1.6f, m_focusDist / 1.03f);
+            m_focusDist = std::max(1.6f, m_focusDist / zoom);
         if (m_keys[Qt::Key_S])
-            m_focusDist = std::min(60.0f, m_focusDist * 1.03f);
+            m_focusDist = std::min(60.0f, m_focusDist * zoom);
 
         const QVector3D dir = -m_cam.forward();
         const QVector3D desired = b.position + dir * (b.radius * m_focusDist);
@@ -303,8 +304,9 @@ void SpaceScene::updateCamera(float dt)
         m_cam.position += (desired - m_cam.position) * k;
         m_cam.lookAt(b.position);
     } else {
-        // free fly
-        float speed = 60.0f * dt;
+        // free fly: slow, deliberate flight — Jupiter is huge, crossing
+        // its diameter should take ~20 seconds
+        float speed = 15.0f * dt;
         if (m_keys[Qt::Key_Shift])
             speed *= 5.0f;
 
