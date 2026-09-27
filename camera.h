@@ -14,7 +14,7 @@ struct Camera
     float pitch = 0.0f;      // rotation around the right axis
     float fovDeg = 55.0f;
     float nearDist = 0.5f;
-    float farDist = 6000.0f;
+    float farDist = 10000.0f;
 
     static constexpr float kMaxPitch = 1.55f; // ~88.8 deg, keeps up vector sane
 

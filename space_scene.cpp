@@ -330,7 +330,7 @@ void SpaceScene::buildScene()
         io.name = "Io";
         io.radius = 1.0f;
         io.texture = ":/data/io_truecolor_texture_map_8k_by_fargetanik-dbpxndx.jpg";
-        io.orbitRadius = 170.0f;
+        io.orbitRadius = 272.0f;   // system expanded 1.6x (D5)
         io.orbitPeriod = 288.0f;   // time units per full revolution
         io.orbitPhaseDeg = 200.0f;
         io.spinPeriodDeg = 10.0f;
@@ -342,7 +342,7 @@ void SpaceScene::buildScene()
         eu.name = "Europa";
         eu.radius = 1.3f;
         eu.texture = ":/data/ZZBiHOH.jpg";
-        eu.orbitRadius = 200.0f;
+        eu.orbitRadius = 320.0f;   // system expanded 1.6x (D5)
         eu.orbitPeriod = 432.0f;
         eu.orbitPhaseDeg = 40.0f;
         eu.orbitInclDeg = 4.0f;
@@ -356,7 +356,7 @@ void SpaceScene::buildScene()
         ce.name = "Ceres";
         ce.radius = 0.5f;
         ce.texture = ":/data/8k_ceres_fictional.jpg";
-        ce.orbitRadius = 150.0f;
+        ce.orbitRadius = 240.0f;   // system expanded 1.6x (D5)
         ce.orbitPeriod = 192.0f;
         ce.orbitPhaseDeg = 320.0f;
         ce.orbitInclDeg = -6.0f;
@@ -368,7 +368,7 @@ void SpaceScene::buildScene()
         ga.name = "Ganymede";
         ga.radius = 1.5f;
         ga.texture = ":/data/8k_eris_fictional.jpg";
-        ga.orbitRadius = 240.0f;
+        ga.orbitRadius = 384.0f;   // system expanded 1.6x (D5)
         ga.orbitPeriod = 720.0f;
         ga.orbitPhaseDeg = 300.0f;
         ga.orbitInclDeg = 2.0f;
@@ -381,7 +381,7 @@ void SpaceScene::buildScene()
         ca.name = "Callisto";
         ca.radius = 1.35f;
         ca.texture = ":/data/8k_haumea_fictional.jpg";
-        ca.orbitRadius = 290.0f;
+        ca.orbitRadius = 464.0f;   // system expanded 1.6x (D5)
         ca.orbitPeriod = 1080.0f;
         ca.orbitPhaseDeg = 130.0f;
         ca.orbitInclDeg = -3.0f;
@@ -393,10 +393,10 @@ void SpaceScene::buildScene()
         ur.name = "Uranus";
         ur.radius = 56.0f;
         ur.texture = ":/data/uranus.jpg";
-        ur.orbitRadius = 900.0f;
+        ur.orbitRadius = 1440.0f;  // system expanded 1.6x (D5)
         ur.orbitPeriod = 2880.0f;  // ~48 min at 1x time
         ur.orbitPhaseDeg = 240.0f;
-        ur.orbitInclDeg = -25.0f;
+        ur.orbitInclDeg = 0.0f;   // planets stay in the ecliptic (sun's) plane
         ur.spinPeriodDeg = 30.0f;
         ur.specularStrength = 0.0f;
         ur.atmosphereOn = true;
@@ -410,10 +410,10 @@ void SpaceScene::buildScene()
         sa.name = "Saturn";
         sa.radius = 115.0f;
         sa.texture = ":/data/8k_saturn.jpg";
-        sa.orbitRadius = 1300.0f;
+        sa.orbitRadius = 2080.0f;  // system expanded 1.6x (D5)
         sa.orbitPeriod = 4320.0f;
         sa.orbitPhaseDeg = 60.0f;
-        sa.orbitInclDeg = -8.0f;
+        sa.orbitInclDeg = 0.0f;   // planets stay in the ecliptic (sun's) plane
         sa.spinPeriodDeg = 8.0f; // fastest spinner in the scene
         sa.specularStrength = 0.0f;
         // the ring system: flat annulus, radial band texture (stage D2b)
@@ -427,7 +427,7 @@ void SpaceScene::buildScene()
         ti.name = "Titan";
         ti.radius = 1.2f;
         ti.texture = ":/data/8k_makemake_fictional.jpg";
-        ti.orbitRadius = 420.0f; // outside the rings (added in D2b)
+        ti.orbitRadius = 672.0f;  // outside the rings; system expanded 1.6x (D5)
         ti.orbitPeriod = 1440.0f;
         ti.orbitPhaseDeg = 80.0f;
         ti.orbitInclDeg = 1.5f;
