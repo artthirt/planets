@@ -7,10 +7,16 @@ MainWindow::MainWindow(QWidget *parent) :
 {
 	ui->setupUi(this);
 
-    auto w = QWidget::createWindowContainer(&mPlanetGL);
+    auto w = QWidget::createWindowContainer(&m_scene);
     ui->vlGL->addWidget(w);
 
-	resize(1100, 600);
+	connect(&m_scene, &SpaceScene::focusChanged, this, &MainWindow::onSceneFocusChanged);
+	connect(&m_scene, &SpaceScene::infoChanged, this, &MainWindow::onSceneInfo);
+
+	statusBar()->showMessage(
+		"WASD fly · Q/E down/up · Shift boost · drag look · wheel zoom · M focus body");
+
+	resize(1100, 640);
 }
 
 MainWindow::~MainWindow()
@@ -20,6 +26,15 @@ MainWindow::~MainWindow()
 
 void MainWindow::on_hs_speed_valueChanged(int value)
 {
-    float val = 0.01 * value;
-    mPlanetGL.setSpeed(0.01 + val);
+    m_scene.setSpeed(0.01f + 0.01f * value);
+}
+
+void MainWindow::onSceneFocusChanged(const QString &body)
+{
+	setWindowTitle(QString("Planets — %1").arg(body));
+}
+
+void MainWindow::onSceneInfo(const QString &info)
+{
+	statusBar()->showMessage(info, 8000);
 }
