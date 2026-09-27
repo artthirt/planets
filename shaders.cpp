@@ -184,6 +184,47 @@ uniform vec3 uSunColor;
 uniform vec3 uAtmColor;
 uniform float uDensity;    // base optical density at the surface
 uniform float uScaleH;     // exponential scale height (world units)
+uniform sampler2D uTex;    // planet surface texture: luminance masks the gas
+uniform float uSpin;       // planet spin angle, radians (world Y)
+uniform float uTime;       // scene time, drives the slow gas drift
+uniform float uNoiseAmt;   // 0..1, FBM detail amount (0 = smooth gas)
+
+float hash13(vec3 p)
+{
+    p = fract(p * 0.1031);
+    p += dot(p, p.zyx + 31.32);
+    return fract((p.x + p.y) * p.z);
+}
+
+float vnoise(vec3 p)
+{
+    vec3 i = floor(p);
+    vec3 f = fract(p);
+    f = f * f * (3.0 - 2.0 * f);
+    float n000 = hash13(i);
+    float n100 = hash13(i + vec3(1.0, 0.0, 0.0));
+    float n010 = hash13(i + vec3(0.0, 1.0, 0.0));
+    float n110 = hash13(i + vec3(1.0, 1.0, 0.0));
+    float n001 = hash13(i + vec3(0.0, 0.0, 1.0));
+    float n101 = hash13(i + vec3(1.0, 0.0, 1.0));
+    float n011 = hash13(i + vec3(0.0, 1.0, 1.0));
+    float n111 = hash13(i + vec3(1.0, 1.0, 1.0));
+    return mix(mix(mix(n000, n100, f.x), mix(n010, n110, f.x), f.y),
+               mix(mix(n001, n101, f.x), mix(n011, n111, f.x), f.y),
+               f.z);
+}
+
+float fbm(vec3 p)
+{
+    float s = 0.0;
+    float a = 0.5;
+    for (int i = 0; i < 4; i++) {
+        s += a * vnoise(p);
+        p = p * 2.03 + vec3(11.31);
+        a *= 0.5;
+    }
+    return s; // ~[0, 0.94]
+}
 
 void main()
 {
@@ -217,9 +258,24 @@ void main()
         float t = t0 + (i + 0.5) * ds;
         vec3 p = uCamPos + rd * t;
         float h = length(p - uCenter) - uPlanetR;
+        if (h < -1.0)
+            break; // solid body: occludes every sample behind it
         if (h <= 0.0)
-            continue; // below the surface: no gas
+            continue; // just below the surface: no gas
         float dens = uDensity * exp(-h / uScaleH);
+        if (uNoiseAmt > 0.0) {
+            // project the sample onto the surface (un-rotate the spin) so the
+            // texture luminance can mask the gas: bright cloud tops carry
+            // denser atmosphere; FBM adds drifting structure on top
+            vec3 d = (p - uCenter) / (h + uPlanetR);
+            float cs = cos(uSpin), sn = sin(uSpin);
+            vec3 q = vec3(cs * d.x - sn * d.z, d.y, sn * d.x + cs * d.z);
+            vec2 tuv = vec2(atan(q.x, q.z) * 0.15915494 + 0.5,
+                            acos(clamp(q.y, -1.0, 1.0)) * 0.31830989);
+            float luma = dot(texture(uTex, tuv).rgb, vec3(0.299, 0.587, 0.114));
+            float n = fbm(q * (uPlanetR * 0.08) + uTime * vec3(0.011, 0.007, 0.013));
+            dens *= mix(0.35, 1.35, luma) * mix(1.0, 0.35 + 1.3 * n, uNoiseAmt);
+        }
         float sigma = dens * ds;
         if (sigma < 1e-6)
             continue;

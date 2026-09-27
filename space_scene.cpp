@@ -209,6 +209,10 @@ void SpaceScene::buildScene()
     m_au.atmColor = m_atmProg->uniformLocation("uAtmColor");
     m_au.density = m_atmProg->uniformLocation("uDensity");
     m_au.scaleH = m_atmProg->uniformLocation("uScaleH");
+    m_au.tex = m_atmProg->uniformLocation("uTex");
+    m_au.spin = m_atmProg->uniformLocation("uSpin");
+    m_au.time = m_atmProg->uniformLocation("uTime");
+    m_au.noiseAmt = m_atmProg->uniformLocation("uNoiseAmt");
     m_atmProg->release();
 
     m_atmFsProg->bind();
@@ -222,6 +226,10 @@ void SpaceScene::buildScene()
     m_afu.atmColor = m_atmFsProg->uniformLocation("uAtmColor");
     m_afu.density = m_atmFsProg->uniformLocation("uDensity");
     m_afu.scaleH = m_atmFsProg->uniformLocation("uScaleH");
+    m_afu.tex = m_atmFsProg->uniformLocation("uTex");
+    m_afu.spin = m_atmFsProg->uniformLocation("uSpin");
+    m_afu.time = m_atmFsProg->uniformLocation("uTime");
+    m_afu.noiseAmt = m_atmFsProg->uniformLocation("uNoiseAmt");
     m_atmFsProg->release();
 
     // --- geometry: one shared unit sphere for everything ---
@@ -265,6 +273,7 @@ void SpaceScene::buildScene()
         jup.atmosphereOn = true;
         jup.atmosphereColor = QVector3D(1.0f, 0.72f, 0.5f);
         jup.atmosphereDensity = 0.02f;   // grazing limb optical depth ~1.7
+        jup.atmosphereNoise = 0.55f;     // banded, structured gas
         m_bodies.push_back(jup);
     }
     {
@@ -319,6 +328,7 @@ void SpaceScene::buildScene()
         ur.atmosphereOn = true;
         ur.atmosphereColor = QVector3D(0.45f, 0.75f, 0.8f);
         ur.atmosphereDensity = 0.05f;    // thinner, hazier gas
+        ur.atmosphereNoise = 0.25f;      // mostly smooth haze
         m_bodies.push_back(ur);
     }
 
@@ -503,6 +513,10 @@ void SpaceScene::drawAtmosphere(size_t i, const QMatrix4x4 &proj, const QMatrix4
         glUniform3f(m_afu.atmColor, b.atmosphereColor.x(), b.atmosphereColor.y(), b.atmosphereColor.z());
         glUniform1f(m_afu.density, b.atmosphereDensity);
         glUniform1f(m_afu.scaleH, scaleH);
+        glUniform1f(m_afu.spin, m_time * b.spinPeriodDeg * 0.017453293f);
+        glUniform1f(m_afu.time, m_time);
+        glUniform1f(m_afu.noiseAmt, b.atmosphereNoise);
+        glUniform1i(m_afu.tex, 0);
     } else {
         // camera outside: draw the shell's near hemisphere; the far one is
         // backface-culled (it is only ever hidden by the planet or by the
@@ -525,8 +539,14 @@ void SpaceScene::drawAtmosphere(size_t i, const QMatrix4x4 &proj, const QMatrix4
         glUniform3f(m_au.atmColor, b.atmosphereColor.x(), b.atmosphereColor.y(), b.atmosphereColor.z());
         glUniform1f(m_au.density, b.atmosphereDensity);
         glUniform1f(m_au.scaleH, scaleH);
+        glUniform1f(m_au.spin, m_time * b.spinPeriodDeg * 0.017453293f);
+        glUniform1f(m_au.time, m_time);
+        glUniform1f(m_au.noiseAmt, b.atmosphereNoise);
+        glUniform1i(m_au.tex, 0);
     }
 
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, b.texId);
     glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA); // premultiplied gas
     glDepthMask(GL_FALSE);
     mesh->draw();

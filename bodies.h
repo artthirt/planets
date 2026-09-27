@@ -30,6 +30,7 @@ struct Body
     float atmosphereRadiusScale = 1.18f; // shell outer radius = ratio * radius
     float atmosphereDensity = 1.0f;      // base optical density at the surface
     float atmosphereScaleHeightRatio = 0.06f; // scale height = ratio * radius
+    float atmosphereNoise = 0.0f;        // 0..1, FBM detail amount
 
     // runtime
     QVector3D position;
