@@ -321,10 +321,11 @@ void SpaceScene::updateCamera(float dt)
             m_cam.position += m_cam.forward() * speed;
         if (m_keys[Qt::Key_S])
             m_cam.position -= m_cam.forward() * speed;
+        // A/D inverted (user preference, matches inverted mouse drag)
         if (m_keys[Qt::Key_A])
-            m_cam.position -= m_cam.right() * speed;
-        if (m_keys[Qt::Key_D])
             m_cam.position += m_cam.right() * speed;
+        if (m_keys[Qt::Key_D])
+            m_cam.position -= m_cam.right() * speed;
         if (m_keys[Qt::Key_E])
             m_cam.position += QVector3D(0, 1, 0) * speed;
         if (m_keys[Qt::Key_Q])
