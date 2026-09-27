@@ -61,20 +61,23 @@ void main()
     // compile-time constant expression (error C1059 on NVIDIA).
     float diff = max(dot(N, L), 0.0);
     vec3 H = normalize(L + V);
-    float spec = pow(max(dot(N, H), 0.0), uShin) * uSpec;
+    // glint only where the sun actually hits: no specular on the night side
+    float spec = pow(max(dot(N, H), 0.0), uShin) * uSpec * diff;
 
     vec3 texc = texture(uTex, vTex).rgb;
 
-    // day side lit by the distant sun, night side gets faint starlight
-    vec3 col = texc * (uSunColor * diff + vec3(0.015, 0.02, 0.03));
+    // day side lit by the distant sun; the night side in deep space is
+    // essentially black (only a whisper of starlight)
+    vec3 col = texc * (uSunColor * diff + vec3(0.003, 0.004, 0.006));
 
     // glint (ice / ocean)
     col += uSunColor * spec * texc;
 
-    // cheap fresnel rim, stands in for the volumetric atmosphere (stage C)
+    // cheap fresnel rim, stands in for the volumetric atmosphere (stage C);
+    // the night limb stays dark — no broad glow around the unlit side
     float fres = pow(1.0 - max(dot(N, V), 0.0), 3.0);
     float day = smoothstep(-0.15, 0.35, dot(N, L));
-    col += uAtmColor * fres * (0.25 + 0.75 * day) * uAtmOn;
+    col += uAtmColor * fres * (0.05 + 0.95 * day) * uAtmOn;
 
     fragColor = vec4(col, 1.0);
 }

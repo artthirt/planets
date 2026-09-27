@@ -404,7 +404,13 @@ void SpaceScene::paintGL()
     if (width() < 2 || height() < 2)
         return;
 
-    glViewport(0, 0, width(), height());
+    // the default framebuffer is sized in physical pixels: scale by the
+    // screen's device pixel ratio (Windows display scaling), otherwise at
+    // non-100% scaling the scene renders into a sub-region of the window
+    const qreal dpr = devicePixelRatio();
+    const int fbW = qRound(width() * dpr);
+    const int fbH = qRound(height() * dpr);
+    glViewport(0, 0, fbW, fbH);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glClearColor(0.004f, 0.005f, 0.01f, 1.0f);
 
@@ -424,11 +430,15 @@ void SpaceScene::paintGL()
 
 void SpaceScene::saveScreenshot()
 {
-    QImage img(width(), height(), QImage::Format_RGB888);
-    glReadPixels(0, 0, width(), height(), GL_RGB, GL_UNSIGNED_BYTE, img.bits());
+    // read the full physical framebuffer (see paintGL)
+    const qreal dpr = devicePixelRatio();
+    const int w = qRound(width() * dpr);
+    const int h = qRound(height() * dpr);
+    QImage img(w, h, QImage::Format_RGB888);
+    glReadPixels(0, 0, w, h, GL_RGB, GL_UNSIGNED_BYTE, img.bits());
     QTransform flip;
     flip.scale(1.0, -1.0);
-    flip.translate(0.0, -height());
+    flip.translate(0.0, -h);
     img = img.transformed(flip);
     if (img.save(m_shotPath))
         qInfo().noquote() << "screenshot saved:" << m_shotPath;
@@ -453,8 +463,9 @@ void SpaceScene::mouseMoveEvent(QMouseEvent *e)
     const QPoint d = e->pos() - m_lastMouse;
     m_lastMouse = e->pos();
 
-    m_cam.yaw += d.x() * 0.005f;
-    m_cam.pitch += d.y() * 0.005f;
+    // drag = grab the scene: moving the mouse right/down turns the view left/up
+    m_cam.yaw -= d.x() * 0.005f;
+    m_cam.pitch -= d.y() * 0.005f;
     m_cam.clampPitch();
 }
 
