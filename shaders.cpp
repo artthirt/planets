@@ -48,7 +48,7 @@ uniform vec3 uSunDir;      // normalized, points toward the sun
 uniform vec3 uSunColor;
 uniform float uSpec;
 uniform float uShin;
-uniform vec4 uOccluders[8]; // other bodies: xyz center, w radius (shadows)
+uniform vec4 uOccluders[16]; // other bodies: xyz center, w radius (shadows)
 uniform int uOccluderCount;
 uniform float uSunAngle;   // apparent sun radius, radians (penumbra width)
 
@@ -188,7 +188,7 @@ uniform sampler2D uTex;    // planet surface texture: luminance masks the gas
 uniform float uSpin;       // planet spin angle, radians (world Y)
 uniform float uTime;       // scene time, drives the slow gas drift
 uniform float uNoiseAmt;   // 0..1, FBM detail amount (0 = smooth gas)
-uniform vec4 uOccluders[8]; // solid bodies: xyz center, w radius (sun shadows)
+uniform vec4 uOccluders[16]; // solid bodies: xyz center, w radius (sun shadows)
 uniform int uOccluderCount;
 
 float hash13(vec3 p)

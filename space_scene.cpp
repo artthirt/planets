@@ -360,6 +360,41 @@ void SpaceScene::buildScene()
         ur.atmosphereNoise = 0.25f;      // mostly smooth haze
         m_bodies.push_back(ur);
     }
+    {
+        Body sa;
+        sa.name = "Saturn";
+        sa.radius = 115.0f;
+        sa.texture = ":/data/8k_saturn.jpg";
+        sa.orbitRadius = 1300.0f;
+        sa.orbitPeriod = 4320.0f;
+        sa.orbitPhaseDeg = 60.0f;
+        sa.orbitInclDeg = -8.0f;
+        sa.spinPeriodDeg = 8.0f; // fastest spinner in the scene
+        sa.specularStrength = 0.0f;
+        m_bodies.push_back(sa);
+    }
+    {
+        Body ti;
+        ti.name = "Titan";
+        ti.radius = 1.2f;
+        ti.texture = ":/data/8k_makemake_fictional.jpg";
+        ti.orbitRadius = 420.0f; // outside the rings (added in D2b)
+        ti.orbitPeriod = 1440.0f;
+        ti.orbitPhaseDeg = 80.0f;
+        ti.orbitInclDeg = 1.5f;
+        ti.parent = (int)m_bodies.size() - 1; // Saturn
+        ti.spinPeriodDeg = 1.5f;
+        ti.specularStrength = 0.0f;
+        // Titan's famous thick orange haze: small shell, so the base
+        // density must be high to reach a limb optical depth ~1
+        ti.atmosphereOn = true;
+        ti.atmosphereColor = QVector3D(1.0f, 0.55f, 0.25f);
+        ti.atmosphereRadiusScale = 1.15f;
+        ti.atmosphereDensity = 1.2f;
+        ti.atmosphereScaleHeightRatio = 0.05f;
+        ti.atmosphereNoise = 0.3f;
+        m_bodies.push_back(ti);
+    }
 
     for (Body &b : m_bodies)
         b.texId = uploadTexture(b.texture);
@@ -480,9 +515,9 @@ void SpaceScene::drawBody(size_t i, const QMatrix4x4 &proj, const QMatrix4x4 &vi
     model.scale(b.radius);
 
     // every other body can cast a shadow on this one
-    float occ[8 * 4] = {0};
+    float occ[16 * 4] = {0};
     int nOcc = 0;
-    for (size_t j = 0; j < m_bodies.size() && nOcc < 8; ++j) {
+    for (size_t j = 0; j < m_bodies.size() && nOcc < 16; ++j) {
         if (j == i)
             continue;
         const Body &o = m_bodies[j];
@@ -502,7 +537,7 @@ void SpaceScene::drawBody(size_t i, const QMatrix4x4 &proj, const QMatrix4x4 &vi
     glUniform3f(m_pu.sunColor, m_sunColor.x(), m_sunColor.y(), m_sunColor.z());
     glUniform1f(m_pu.spec, b.specularStrength);
     glUniform1f(m_pu.shin, b.shininess);
-    glUniform4fv(m_pu.occluders, 8, occ);
+    glUniform4fv(m_pu.occluders, 16, occ);
     glUniform1i(m_pu.occluderCount, nOcc);
     glUniform1f(m_pu.sunAngle, kSunAngleRad);
     glUniform1i(m_pu.tex, 0);
@@ -524,9 +559,9 @@ void SpaceScene::drawAtmosphere(size_t i, const QMatrix4x4 &proj, const QMatrix4
 
     // every solid body shadows the gas — including the planet itself, whose
     // night-side gas sits in its own umbra (proper terminator on the gas)
-    float occ[8 * 4] = {0};
+    float occ[16 * 4] = {0};
     int nOcc = 0;
-    for (size_t j = 0; j < m_bodies.size() && nOcc < 8; ++j) {
+    for (size_t j = 0; j < m_bodies.size() && nOcc < 16; ++j) {
         const Body &o = m_bodies[j];
         occ[nOcc * 4 + 0] = o.position.x();
         occ[nOcc * 4 + 1] = o.position.y();
@@ -558,7 +593,7 @@ void SpaceScene::drawAtmosphere(size_t i, const QMatrix4x4 &proj, const QMatrix4
         glUniform1f(m_afu.spin, m_time * b.spinPeriodDeg * 0.017453293f);
         glUniform1f(m_afu.time, m_time);
         glUniform1f(m_afu.noiseAmt, b.atmosphereNoise);
-        glUniform4fv(m_afu.occluders, 8, occ);
+        glUniform4fv(m_afu.occluders, 16, occ);
         glUniform1i(m_afu.occluderCount, nOcc);
         glUniform1i(m_afu.tex, 0);
     } else {
@@ -586,7 +621,7 @@ void SpaceScene::drawAtmosphere(size_t i, const QMatrix4x4 &proj, const QMatrix4
         glUniform1f(m_au.spin, m_time * b.spinPeriodDeg * 0.017453293f);
         glUniform1f(m_au.time, m_time);
         glUniform1f(m_au.noiseAmt, b.atmosphereNoise);
-        glUniform4fv(m_au.occluders, 8, occ);
+        glUniform4fv(m_au.occluders, 16, occ);
         glUniform1i(m_au.occluderCount, nOcc);
         glUniform1i(m_au.tex, 0);
     }
