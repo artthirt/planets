@@ -35,8 +35,9 @@ SpaceScene::SpaceScene()
     m_dragging = false;
     m_lastFrame.start();
 
-    // sun: a distant, unreachable light source, slightly above the ecliptic
-    m_sunDir = QVector3D(0.72f, 0.28f, 0.63f).normalized();
+    // sun: a distant, unreachable light source, in the ecliptic plane
+    // (space has no "above" — keep the sun on the orbital horizon)
+    m_sunDir = QVector3D(0.72f, 0.0f, 0.63f).normalized();
 
     // start outside Jupiter, looking at the system
     m_cam.position = QVector3D(0.0f, 80.0f, 620.0f);
