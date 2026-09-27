@@ -269,13 +269,19 @@ void main()
     float steps = clamp(floor((t1 - t0) / (uShellR * 0.02) + 0.5), 8.0, 64.0);
     float ds = (t1 - t0) / steps;
 
+    // per-pixel random phase of the sample grid: a fixed grid slides across
+    // the density profile as the ray path length changes, and the quadrature
+    // error forms visible concentric rings (contours of equal path length).
+    // Jittering breaks them into invisible noise
+    float jit = hash13(rd * 71.3);
+
     float trans = 1.0;    // accumulated transmittance
     vec3 acc = vec3(0.0); // accumulated in-scattered light
 
     for (float i = 0.0; i < 64.0; i++) {
         if (i >= steps)
             break;
-        float t = t0 + (i + 0.5) * ds;
+        float t = min(t0 + (i + 0.5 + jit) * ds, t1);
         vec3 p = uCamPos + rd * t;
         float h = length(p - uCenter) - uPlanetR;
         if (h < -1.0)
