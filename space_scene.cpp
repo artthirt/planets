@@ -416,6 +416,13 @@ void SpaceScene::buildScene()
         sa.orbitInclDeg = 0.0f;   // planets stay in the ecliptic (sun's) plane
         sa.spinPeriodDeg = 8.0f; // fastest spinner in the scene
         sa.specularStrength = 0.0f;
+        // pale golden haze: shell hugs the surface (default 1.05), inside the
+        // ring inner edge (1.2); density lower than Uranus' 0.05 since the
+        // larger planet gives a longer limb path at the same density
+        sa.atmosphereOn = true;
+        sa.atmosphereColor = QVector3D(0.93f, 0.83f, 0.58f);
+        sa.atmosphereDensity = 0.04f;
+        sa.atmosphereNoise = 0.2f;
         // the ring system: flat annulus, radial band texture (stage D2b)
         sa.ringOn = true;
         sa.ringTexture = ":/data/8k_saturn_ring_alpha.png";
