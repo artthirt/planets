@@ -24,11 +24,12 @@ struct Body
     float specularStrength = 0.05f;
     float shininess = 16.0f;
 
-    // atmosphere (stage A: cheap fresnel rim; stage C: raymarched FBM)
+    // atmosphere (stage C: raymarched gas shell)
     bool atmosphereOn = false;
     QVector3D atmosphereColor{0.30f, 0.52f, 1.0f};
-    float atmosphereRadiusScale = 1.18f;
-    float atmosphereDensity = 1.0f;
+    float atmosphereRadiusScale = 1.18f; // shell outer radius = ratio * radius
+    float atmosphereDensity = 1.0f;      // base optical density at the surface
+    float atmosphereScaleHeightRatio = 0.06f; // scale height = ratio * radius
 
     // runtime
     QVector3D position;

@@ -16,11 +16,19 @@ public:
 namespace spaceShaders
 {
 // Planet body: world-space Blinn-Phong from a directional sun + faint star
-// ambient, optional cheap fresnel rim (stage-A stand-in for atmosphere).
+// ambient.
 extern const char *kPlanetVertex;
 extern const char *kPlanetFragment;
 
 // Star sky sphere (camera-centered) with the sun painted "at infinity".
 extern const char *kSkyVertex;
 extern const char *kSkyFragment;
+
+// Volumetric atmosphere (stage C): a raymarched gas shell.
+// kAtmShellVertex feeds the ray from the shell sphere (camera outside the
+// gas); kAtmFsVertex reconstructs the ray per pixel when the camera is
+// inside the gas; kAtmFragment is shared by both passes.
+extern const char *kAtmShellVertex;
+extern const char *kAtmFsVertex;
+extern const char *kAtmFragment;
 }

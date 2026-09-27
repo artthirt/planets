@@ -58,22 +58,30 @@ private:
 
     void drawSky(const QMatrix4x4 &proj, const QMatrix4x4 &view);
     void drawBody(size_t i, const QMatrix4x4 &proj, const QMatrix4x4 &view);
+    void drawAtmosphere(size_t i, const QMatrix4x4 &proj, const QMatrix4x4 &view);
     void saveScreenshot();
 
     // GL resources
     std::unique_ptr<ShaderProgram> m_planetProg;
     std::unique_ptr<ShaderProgram> m_skyProg;
+    std::unique_ptr<ShaderProgram> m_atmProg;    // gas shell (camera outside)
+    std::unique_ptr<ShaderProgram> m_atmFsProg;  // fullscreen (camera in gas)
     std::unique_ptr<Mesh> m_sphere;
+    std::unique_ptr<Mesh> m_fsTri;               // fullscreen triangle (NDC)
     std::vector<GLuint> m_textures;
     unsigned int m_skyTex = 0;
     bool m_hasAniso = false;
     float m_maxAniso = 1.0f;
 
     // shader uniform locations (valid after bind())
-    struct PlanetUniforms { int model, view, proj, camPos, sunDir, sunColor, tex, atmColor, atmOn, spec, shin, occluders, occluderCount, sunAngle; };
+    struct PlanetUniforms { int model, view, proj, camPos, sunDir, sunColor, tex, spec, shin, occluders, occluderCount, sunAngle; };
     struct SkyUniforms { int model, view, proj, camPos, sunDir, sunColor, skyTex; };
+    struct AtmUniforms { int model, view, proj, camPos, center, planetR, shellR, sunDir, sunColor, atmColor, density, scaleH; };
+    struct AtmFsUniforms { int invViewProj, camPos, center, planetR, shellR, sunDir, sunColor, atmColor, density, scaleH; };
     PlanetUniforms m_pu{};
     SkyUniforms m_su{};
+    AtmUniforms m_au{};
+    AtmFsUniforms m_afu{};
 
     // scene data
     std::vector<Body> m_bodies;

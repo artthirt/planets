@@ -10,6 +10,7 @@
 #include <QDebug>
 #include <QTransform>
 
+#include <algorithm>
 #include <cmath>
 
 #define _USE_MATH_DEFINES
@@ -58,6 +59,8 @@ SpaceScene::~SpaceScene()
             glDeleteTextures((GLsizei)m_textures.size(), m_textures.data());
         if (m_sphere)
             m_sphere->release(this);
+        if (m_fsTri)
+            m_fsTri->release(this);
 
         if (!wasCurrent)
             ctx->doneCurrent();
@@ -166,8 +169,6 @@ void SpaceScene::buildScene()
     m_pu.sunDir = m_planetProg->uniformLocation("uSunDir");
     m_pu.sunColor = m_planetProg->uniformLocation("uSunColor");
     m_pu.tex = m_planetProg->uniformLocation("uTex");
-    m_pu.atmColor = m_planetProg->uniformLocation("uAtmColor");
-    m_pu.atmOn = m_planetProg->uniformLocation("uAtmOn");
     m_pu.spec = m_planetProg->uniformLocation("uSpec");
     m_pu.shin = m_planetProg->uniformLocation("uShin");
     m_pu.occluders = m_planetProg->uniformLocation("uOccluders[0]");
@@ -185,6 +186,44 @@ void SpaceScene::buildScene()
     m_su.skyTex = m_skyProg->uniformLocation("uSkyTex");
     m_skyProg->release();
 
+    m_atmProg = std::make_unique<ShaderProgram>();
+    m_atmProg->compile("atmosphere-shell",
+                       spaceShaders::kAtmShellVertex,
+                       spaceShaders::kAtmFragment);
+
+    m_atmFsProg = std::make_unique<ShaderProgram>();
+    m_atmFsProg->compile("atmosphere-fullscreen",
+                         spaceShaders::kAtmFsVertex,
+                         spaceShaders::kAtmFragment);
+
+    m_atmProg->bind();
+    m_au.model = m_atmProg->uniformLocation("uModel");
+    m_au.view = m_atmProg->uniformLocation("uView");
+    m_au.proj = m_atmProg->uniformLocation("uProj");
+    m_au.camPos = m_atmProg->uniformLocation("uCamPos");
+    m_au.center = m_atmProg->uniformLocation("uCenter");
+    m_au.planetR = m_atmProg->uniformLocation("uPlanetR");
+    m_au.shellR = m_atmProg->uniformLocation("uShellR");
+    m_au.sunDir = m_atmProg->uniformLocation("uSunDir");
+    m_au.sunColor = m_atmProg->uniformLocation("uSunColor");
+    m_au.atmColor = m_atmProg->uniformLocation("uAtmColor");
+    m_au.density = m_atmProg->uniformLocation("uDensity");
+    m_au.scaleH = m_atmProg->uniformLocation("uScaleH");
+    m_atmProg->release();
+
+    m_atmFsProg->bind();
+    m_afu.invViewProj = m_atmFsProg->uniformLocation("uInvViewProj");
+    m_afu.camPos = m_atmFsProg->uniformLocation("uCamPos");
+    m_afu.center = m_atmFsProg->uniformLocation("uCenter");
+    m_afu.planetR = m_atmFsProg->uniformLocation("uPlanetR");
+    m_afu.shellR = m_atmFsProg->uniformLocation("uShellR");
+    m_afu.sunDir = m_atmFsProg->uniformLocation("uSunDir");
+    m_afu.sunColor = m_atmFsProg->uniformLocation("uSunColor");
+    m_afu.atmColor = m_atmFsProg->uniformLocation("uAtmColor");
+    m_afu.density = m_atmFsProg->uniformLocation("uDensity");
+    m_afu.scaleH = m_atmFsProg->uniformLocation("uScaleH");
+    m_atmFsProg->release();
+
     // --- geometry: one shared unit sphere for everything ---
     m_sphere = std::make_unique<Mesh>();
     {
@@ -193,6 +232,21 @@ void SpaceScene::buildScene()
         meshes::sphereData(96, 128, pos, nrm, uv, idx);
         if (!m_sphere->build(this, pos, nrm, uv, idx))
             qCritical() << "sphere mesh build failed";
+    }
+
+    // fullscreen triangle (NDC) for the "camera inside the gas" pass
+    m_fsTri = std::make_unique<Mesh>();
+    {
+        QVector<float> pos, nrm, uv;
+        QVector<unsigned int> idx{0, 1, 2};
+        const float tri[3][2] = {{-1.0f, -1.0f}, {3.0f, -1.0f}, {-1.0f, 3.0f}};
+        for (const auto &t : tri) {
+            pos << t[0] << t[1] << 0.0f;
+            nrm << 0.0f << 0.0f << 0.0f;
+            uv << 0.0f << 0.0f;
+        }
+        if (!m_fsTri->build(this, pos, nrm, uv, idx))
+            qCritical() << "fullscreen triangle build failed";
     }
 
     // --- sky dome ---
@@ -210,6 +264,7 @@ void SpaceScene::buildScene()
         jup.specularStrength = 0.0f;
         jup.atmosphereOn = true;
         jup.atmosphereColor = QVector3D(1.0f, 0.72f, 0.5f);
+        jup.atmosphereDensity = 0.02f;   // grazing limb optical depth ~1.7
         m_bodies.push_back(jup);
     }
     {
@@ -263,6 +318,7 @@ void SpaceScene::buildScene()
         ur.specularStrength = 0.0f;
         ur.atmosphereOn = true;
         ur.atmosphereColor = QVector3D(0.45f, 0.75f, 0.8f);
+        ur.atmosphereDensity = 0.05f;    // thinner, hazier gas
         m_bodies.push_back(ur);
     }
 
@@ -405,8 +461,6 @@ void SpaceScene::drawBody(size_t i, const QMatrix4x4 &proj, const QMatrix4x4 &vi
     glUniform3f(m_pu.camPos, m_cam.position.x(), m_cam.position.y(), m_cam.position.z());
     glUniform3f(m_pu.sunDir, m_sunDir.x(), m_sunDir.y(), m_sunDir.z());
     glUniform3f(m_pu.sunColor, m_sunColor.x(), m_sunColor.y(), m_sunColor.z());
-    glUniform3f(m_pu.atmColor, b.atmosphereColor.x(), b.atmosphereColor.y(), b.atmosphereColor.z());
-    glUniform1f(m_pu.atmOn, b.atmosphereOn ? 1.0f : 0.0f);
     glUniform1f(m_pu.spec, b.specularStrength);
     glUniform1f(m_pu.shin, b.shininess);
     glUniform4fv(m_pu.occluders, 8, occ);
@@ -420,6 +474,67 @@ void SpaceScene::drawBody(size_t i, const QMatrix4x4 &proj, const QMatrix4x4 &vi
     m_sphere->draw();
 
     m_planetProg->release();
+}
+
+void SpaceScene::drawAtmosphere(size_t i, const QMatrix4x4 &proj, const QMatrix4x4 &view)
+{
+    const Body &b = m_bodies[i];
+    const float shellR = b.radius * b.atmosphereRadiusScale;
+    const float scaleH = b.radius * b.atmosphereScaleHeightRatio;
+    const bool inside = (m_cam.position - b.position).length() < shellR;
+
+    ShaderProgram *prog;
+    const Mesh *mesh;
+    if (inside) {
+        // camera inside the gas: it surrounds everything on screen, so a
+        // fullscreen pass composites over the already-drawn frame
+        glDisable(GL_DEPTH_TEST);
+        prog = m_atmFsProg.get();
+        mesh = m_fsTri.get();
+        prog->bind();
+        QMatrix4x4 invVP = (proj * view).inverted();
+        glUniformMatrix4fv(m_afu.invViewProj, 1, GL_FALSE, (const float *)invVP.data());
+        glUniform3f(m_afu.camPos, m_cam.position.x(), m_cam.position.y(), m_cam.position.z());
+        glUniform3f(m_afu.center, b.position.x(), b.position.y(), b.position.z());
+        glUniform1f(m_afu.planetR, b.radius);
+        glUniform1f(m_afu.shellR, shellR);
+        glUniform3f(m_afu.sunDir, m_sunDir.x(), m_sunDir.y(), m_sunDir.z());
+        glUniform3f(m_afu.sunColor, m_sunColor.x(), m_sunColor.y(), m_sunColor.z());
+        glUniform3f(m_afu.atmColor, b.atmosphereColor.x(), b.atmosphereColor.y(), b.atmosphereColor.z());
+        glUniform1f(m_afu.density, b.atmosphereDensity);
+        glUniform1f(m_afu.scaleH, scaleH);
+    } else {
+        // camera outside: draw the shell's near hemisphere; the far one is
+        // backface-culled (it is only ever hidden by the planet or by the
+        // near hemisphere), and the depth test keeps it in front of the scene
+        prog = m_atmProg.get();
+        mesh = m_sphere.get();
+        prog->bind();
+        QMatrix4x4 model;
+        model.translate(b.position);
+        model.scale(shellR);
+        glUniformMatrix4fv(m_au.model, 1, GL_FALSE, (const float *)model.data());
+        glUniformMatrix4fv(m_au.view, 1, GL_FALSE, (const float *)view.data());
+        glUniformMatrix4fv(m_au.proj, 1, GL_FALSE, (const float *)proj.data());
+        glUniform3f(m_au.camPos, m_cam.position.x(), m_cam.position.y(), m_cam.position.z());
+        glUniform3f(m_au.center, b.position.x(), b.position.y(), b.position.z());
+        glUniform1f(m_au.planetR, b.radius);
+        glUniform1f(m_au.shellR, shellR);
+        glUniform3f(m_au.sunDir, m_sunDir.x(), m_sunDir.y(), m_sunDir.z());
+        glUniform3f(m_au.sunColor, m_sunColor.x(), m_sunColor.y(), m_sunColor.z());
+        glUniform3f(m_au.atmColor, b.atmosphereColor.x(), b.atmosphereColor.y(), b.atmosphereColor.z());
+        glUniform1f(m_au.density, b.atmosphereDensity);
+        glUniform1f(m_au.scaleH, scaleH);
+    }
+
+    glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA); // premultiplied gas
+    glDepthMask(GL_FALSE);
+    mesh->draw();
+    glDepthMask(GL_TRUE);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); // scene default
+    prog->release();
+    if (inside)
+        glEnable(GL_DEPTH_TEST);
 }
 
 void SpaceScene::paintGL()
@@ -449,6 +564,24 @@ void SpaceScene::paintGL()
     drawSky(proj, view);
     for (size_t i = 0; i < m_bodies.size(); i++)
         drawBody(i, proj, view);
+
+    // atmospheres after all opaque bodies, far to near, so nearer gas
+    // composites correctly over farther gas
+    std::vector<size_t> order;
+    order.reserve(m_bodies.size());
+    for (size_t i = 0; i < m_bodies.size(); ++i)
+        if (m_bodies[i].atmosphereOn)
+            order.push_back(i);
+    auto sqDist = [](const QVector3D &p, const QVector3D &o) {
+        const float dx = p.x() - o.x(), dy = p.y() - o.y(), dz = p.z() - o.z();
+        return dx * dx + dy * dy + dz * dz;
+    };
+    std::sort(order.begin(), order.end(), [this, &sqDist](size_t a, size_t b) {
+        return sqDist(m_bodies[a].position, m_cam.position) >
+               sqDist(m_bodies[b].position, m_cam.position);
+    });
+    for (size_t i : order)
+        drawAtmosphere(i, proj, view);
 
     if (!m_shotPath.isEmpty()) {
         ++m_shotCount;

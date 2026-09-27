@@ -46,8 +46,6 @@ uniform sampler2D uTex;
 uniform vec3 uCamPos;
 uniform vec3 uSunDir;      // normalized, points toward the sun
 uniform vec3 uSunColor;
-uniform vec3 uAtmColor;
-uniform float uAtmOn;      // 0/1, cheap fresnel rim preview
 uniform float uSpec;
 uniform float uShin;
 uniform vec4 uOccluders[8]; // other bodies: xyz center, w radius (shadows)
@@ -118,13 +116,124 @@ void main()
     // glint (ice / ocean)
     col += uSunColor * spec * texc;
 
-    // cheap fresnel rim, stands in for the volumetric atmosphere (stage C);
-    // the night limb stays dark, and the lit limb fades inside a shadow
-    float fres = pow(1.0 - max(dot(N, V), 0.0), 3.0);
-    float day = smoothstep(-0.15, 0.35, dot(N, L));
-    col += uAtmColor * fres * (0.05 + 0.95 * day) * uAtmOn * shadowAtt;
+    // the atmosphere is a separate raymarched pass (kAtmFragment)
 
     fragColor = vec4(col, 1.0);
+}
+)glsl";
+
+const char *kAtmShellVertex = R"glsl(
+#version 330 core
+layout(location = 0) in vec3 aPos;
+layout(location = 1) in vec3 aNormal;
+layout(location = 2) in vec2 aTex;
+
+uniform mat4 uModel;   // translate(planetCenter) * scale(shellRadius)
+uniform mat4 uView;
+uniform mat4 uProj;
+uniform vec3 uCamPos;
+
+out vec3 vRayDir;      // world direction, camera -> this fragment
+
+void main()
+{
+    vec4 wp = uModel * vec4(aPos, 1.0);
+    vRayDir = wp.xyz - uCamPos;
+    gl_Position = uProj * uView * wp;
+}
+)glsl";
+
+const char *kAtmFsVertex = R"glsl(
+#version 330 core
+// Fullscreen triangle (aPos = NDC xy); used when the camera is INSIDE the
+// gas, where the shell geometry has the wrong depth for compositing.
+layout(location = 0) in vec3 aPos;
+layout(location = 1) in vec3 aNormal;
+layout(location = 2) in vec2 aTex;
+
+uniform mat4 uInvViewProj;
+uniform vec3 uCamPos;
+
+out vec3 vRayDir;
+
+void main()
+{
+    gl_Position = vec4(aPos.xy, 0.0, 1.0);
+    vec4 wp = uInvViewProj * vec4(aPos.xy, 0.0, 1.0);
+    vRayDir = wp.xyz / wp.w - uCamPos;
+}
+)glsl";
+
+const char *kAtmFragment = R"glsl(
+#version 330 core
+// Raymarched gas: exponential altitude density, per-sample sunlight.
+// Shared by the shell pass (camera outside) and the fullscreen pass
+// (camera inside the gas). Outputs premultiplied color: composite with
+// blend func (ONE, ONE_MINUS_SRC_ALPHA).
+// (GLSL: runtime-initialized locals must not be `const` — error C1059)
+in vec3 vRayDir;
+
+out vec4 fragColor;
+
+uniform vec3 uCamPos;
+uniform vec3 uCenter;      // planet center
+uniform float uPlanetR;    // solid-surface radius
+uniform float uShellR;     // outer radius of the gas
+uniform vec3 uSunDir;      // normalized
+uniform vec3 uSunColor;
+uniform vec3 uAtmColor;
+uniform float uDensity;    // base optical density at the surface
+uniform float uScaleH;     // exponential scale height (world units)
+
+void main()
+{
+    vec3 rd = normalize(vRayDir);
+
+    // ray vs the shell sphere
+    vec3 oc = uCamPos - uCenter;
+    float b = dot(oc, rd);
+    float c = dot(oc, oc) - uShellR * uShellR;
+    float disc = b * b - c;
+    if (disc < 0.0)
+        discard; // ray misses the gas
+    float sq = sqrt(disc);
+    float t0 = -b - sq;
+    float t1 = -b + sq;
+    if (t1 <= 0.0)
+        discard; // gas entirely behind the camera
+    if (t0 < 0.0)
+        t0 = 0.0; // camera inside the gas: march from the eye
+
+    // ~2% of the shell radius per step, clamped to a sane range
+    float steps = clamp(floor((t1 - t0) / (uShellR * 0.02) + 0.5), 8.0, 64.0);
+    float ds = (t1 - t0) / steps;
+
+    float trans = 1.0;    // accumulated transmittance
+    vec3 acc = vec3(0.0); // accumulated in-scattered light
+
+    for (float i = 0.0; i < 64.0; i++) {
+        if (i >= steps)
+            break;
+        float t = t0 + (i + 0.5) * ds;
+        vec3 p = uCamPos + rd * t;
+        float h = length(p - uCenter) - uPlanetR;
+        if (h <= 0.0)
+            continue; // below the surface: no gas
+        float dens = uDensity * exp(-h / uScaleH);
+        float sigma = dens * ds;
+        if (sigma < 1e-6)
+            continue;
+        // per-sample sunlight: smooth terminator, a whisper on the night side
+        vec3 N = (p - uCenter) / (h + uPlanetR);
+        float day = smoothstep(-0.25, 0.35, dot(N, uSunDir));
+        float a = 1.0 - exp(-sigma);
+        acc += trans * a * uAtmColor * uSunColor * (0.02 + 0.98 * day);
+        trans *= (1.0 - a);
+        if (trans < 0.02)
+            break; // optically thick: nothing left to add
+    }
+
+    fragColor = vec4(acc, 1.0 - trans);
 }
 )glsl";
 
