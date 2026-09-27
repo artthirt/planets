@@ -59,6 +59,7 @@ private:
     void drawSky(const QMatrix4x4 &proj, const QMatrix4x4 &view);
     void drawBody(size_t i, const QMatrix4x4 &proj, const QMatrix4x4 &view);
     void drawAtmosphere(size_t i, const QMatrix4x4 &proj, const QMatrix4x4 &view);
+    void drawRing(size_t i, const QMatrix4x4 &proj, const QMatrix4x4 &view);
     void saveScreenshot();
 
     // GL resources
@@ -66,7 +67,9 @@ private:
     std::unique_ptr<ShaderProgram> m_skyProg;
     std::unique_ptr<ShaderProgram> m_atmProg;    // gas shell (camera outside)
     std::unique_ptr<ShaderProgram> m_atmFsProg;  // fullscreen (camera in gas)
+    std::unique_ptr<ShaderProgram> m_ringProg;   // flat ring disc (stage D2b)
     std::unique_ptr<Mesh> m_sphere;
+    std::unique_ptr<Mesh> m_ring;                // unit-planet annulus
     std::unique_ptr<Mesh> m_fsTri;               // fullscreen triangle (NDC)
     std::vector<GLuint> m_textures;
     unsigned int m_skyTex = 0;
@@ -78,10 +81,12 @@ private:
     struct SkyUniforms { int model, view, proj, camPos, sunDir, sunColor, skyTex; };
     struct AtmUniforms { int model, view, proj, camPos, center, planetR, shellR, sunDir, sunColor, atmColor, density, scaleH, tex, spin, time, noiseAmt, occluders, occluderCount; };
     struct AtmFsUniforms { int invViewProj, camPos, center, planetR, shellR, sunDir, sunColor, atmColor, density, scaleH, tex, spin, time, noiseAmt, occluders, occluderCount; };
+    struct RingUniforms { int model, view, proj, sunDir, sunColor, center, planetR, tex; };
     PlanetUniforms m_pu{};
     SkyUniforms m_su{};
     AtmUniforms m_au{};
     AtmFsUniforms m_afu{};
+    RingUniforms m_ru{};
 
     // scene data
     std::vector<Body> m_bodies;

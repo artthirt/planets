@@ -41,4 +41,11 @@ namespace meshes
 void sphereData(int lat, int lon,
                 QVector<float> &pos, QVector<float> &nrm,
                 QVector<float> &uv, QVector<unsigned int> &idx);
+
+// Flat annulus in the XZ plane (triangle strip), radii in planet-radius
+// units. aTex.x = radial coordinate (0 = inner edge, 1 = outer edge),
+// aTex.y = angular fraction (unused by the radial texture).
+void ringData(float rIn, float rOut, int segs,
+              QVector<float> &pos, QVector<float> &nrm,
+              QVector<float> &uv, QVector<unsigned int> &idx);
 }

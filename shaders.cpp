@@ -323,6 +323,55 @@ void main()
 }
 )glsl";
 
+const char *kRingFragment = R"glsl(
+#version 330 core
+// Flat annulus (stage D2b): the texture is a radial strip (width = ring
+// radius), so only u matters. Two-sided lighting (|dot|) keeps the disc
+// visible from both faces; the planet casts a hard shadow band across it.
+// Drawn with the scene's default alpha blend, cull off, depth write off.
+// (GLSL: runtime-initialized locals must not be `const` — error C1059)
+in vec3 vWorldPos;
+in vec3 vNormal;
+in vec2 vTex;
+
+out vec4 fragColor;
+
+uniform sampler2D uRingTex;
+uniform vec3 uSunDir;     // normalized, points toward the sun
+uniform vec3 uSunColor;
+uniform vec3 uCenter;     // shadow-casting planet center
+uniform float uPlanetR;   // shadow-casting planet radius
+
+// Does the (single) planet sphere block the ray p -> p + t*dir (t > 0)?
+float planetShadow(vec3 p, vec3 dir)
+{
+    vec3 d = uCenter - p;
+    float b = dot(d, dir);
+    if (b <= 0.0)
+        return 0.0; // planet behind the point
+    float r2 = dot(d, d) - uPlanetR * uPlanetR;
+    if (r2 >= b * b)
+        return 0.0; // ray misses the planet
+    return (b - sqrt(b * b - r2)) > 0.0 ? 1.0 : 0.0;
+}
+
+void main()
+{
+    vec4 rt = texture(uRingTex, vec2(vTex.x, 0.5));
+    if (rt.a < 0.004)
+        discard; // transparent margins / ring gaps
+
+    vec3 L = normalize(uSunDir);
+    float light = abs(dot(normalize(vNormal), L));
+    float sh = 1.0 - planetShadow(vWorldPos, L); // planet's shadow band
+
+    // the texture is a dim gray-tan (~0.4); brighten to a sunlit ring
+    vec3 col = rt.rgb * 2.2 * uSunColor * (light * sh);
+
+    fragColor = vec4(col, rt.a);
+}
+)glsl";
+
 const char *kSkyVertex = R"glsl(
 #version 330 core
 layout(location = 0) in vec3 aPos;

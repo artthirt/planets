@@ -31,4 +31,9 @@ extern const char *kSkyFragment;
 extern const char *kAtmShellVertex;
 extern const char *kAtmFsVertex;
 extern const char *kAtmFragment;
+
+// Ring disc (stage D2b): flat annulus, radial band texture, two-sided
+// lighting, hard planet shadow across the disc. Pairs with kPlanetVertex
+// (same inputs/outputs: model/view/proj, pos/normal/uv).
+extern const char *kRingFragment;
 }

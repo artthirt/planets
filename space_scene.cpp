@@ -59,6 +59,8 @@ SpaceScene::~SpaceScene()
             glDeleteTextures((GLsizei)m_textures.size(), m_textures.data());
         if (m_sphere)
             m_sphere->release(this);
+        if (m_ring)
+            m_ring->release(this);
         if (m_fsTri)
             m_fsTri->release(this);
 
@@ -236,6 +238,24 @@ void SpaceScene::buildScene()
     m_afu.occluderCount = m_atmFsProg->uniformLocation("uOccluderCount");
     m_atmFsProg->release();
 
+    m_ringProg = std::make_unique<ShaderProgram>();
+    // the ring vertex stage is the planet's (same layout: model/view/proj +
+    // pos/normal/uv); only the fragment differs
+    m_ringProg->compile("rings",
+                        spaceShaders::kPlanetVertex,
+                        spaceShaders::kRingFragment);
+
+    m_ringProg->bind();
+    m_ru.model = m_ringProg->uniformLocation("uModel");
+    m_ru.view = m_ringProg->uniformLocation("uView");
+    m_ru.proj = m_ringProg->uniformLocation("uProj");
+    m_ru.sunDir = m_ringProg->uniformLocation("uSunDir");
+    m_ru.sunColor = m_ringProg->uniformLocation("uSunColor");
+    m_ru.center = m_ringProg->uniformLocation("uCenter");
+    m_ru.planetR = m_ringProg->uniformLocation("uPlanetR");
+    m_ru.tex = m_ringProg->uniformLocation("uRingTex");
+    m_ringProg->release();
+
     // --- geometry: one shared unit sphere for everything ---
     m_sphere = std::make_unique<Mesh>();
     {
@@ -259,6 +279,25 @@ void SpaceScene::buildScene()
         }
         if (!m_fsTri->build(this, pos, nrm, uv, idx))
             qCritical() << "fullscreen triangle build failed";
+    }
+
+    // --- ring annulus: one shared mesh, sized from the first ringOn body ---
+    m_ring = std::make_unique<Mesh>();
+    {
+        float rIn = 1.2f;
+        float rOut = 2.35f;
+        for (const Body &b : m_bodies) {
+            if (b.ringOn) {
+                rIn = b.ringInnerScale;
+                rOut = b.ringOuterScale;
+                break;
+            }
+        }
+        QVector<float> pos, nrm, uv;
+        QVector<unsigned int> idx;
+        meshes::ringData(rIn, rOut, 256, pos, nrm, uv, idx);
+        if (!m_ring->build(this, pos, nrm, uv, idx))
+            qCritical() << "ring mesh build failed";
     }
 
     // --- sky dome ---
@@ -371,6 +410,10 @@ void SpaceScene::buildScene()
         sa.orbitInclDeg = -8.0f;
         sa.spinPeriodDeg = 8.0f; // fastest spinner in the scene
         sa.specularStrength = 0.0f;
+        // the ring system: flat annulus, radial band texture (stage D2b)
+        sa.ringOn = true;
+        sa.ringTexture = ":/data/8k_saturn_ring_alpha.png";
+        sa.ringTiltDeg = 27.0f; // real axial tilt
         m_bodies.push_back(sa);
     }
     {
@@ -396,8 +439,11 @@ void SpaceScene::buildScene()
         m_bodies.push_back(ti);
     }
 
-    for (Body &b : m_bodies)
+    for (Body &b : m_bodies) {
         b.texId = uploadTexture(b.texture);
+        if (b.ringOn)
+            b.ringTexId = uploadTexture(b.ringTexture);
+    }
 
     updateOrbits();
 }
@@ -638,6 +684,42 @@ void SpaceScene::drawAtmosphere(size_t i, const QMatrix4x4 &proj, const QMatrix4
         glEnable(GL_DEPTH_TEST);
 }
 
+void SpaceScene::drawRing(size_t i, const QMatrix4x4 &proj, const QMatrix4x4 &view)
+{
+    const Body &b = m_bodies[i];
+    if (!b.ringOn || !b.ringTexId)
+        return;
+
+    QMatrix4x4 model;
+    model.translate(b.position);
+    model.rotate(b.ringTiltDeg, 1.0f, 0.0f, 0.0f);
+    model.scale(b.radius);
+
+    m_ringProg->bind();
+    glUniformMatrix4fv(m_ru.model, 1, GL_FALSE, (const float *)model.data());
+    glUniformMatrix4fv(m_ru.view, 1, GL_FALSE, (const float *)view.data());
+    glUniformMatrix4fv(m_ru.proj, 1, GL_FALSE, (const float *)proj.data());
+    glUniform3f(m_ru.sunDir, m_sunDir.x(), m_sunDir.y(), m_sunDir.z());
+    glUniform3f(m_ru.sunColor, m_sunColor.x(), m_sunColor.y(), m_sunColor.z());
+    glUniform3f(m_ru.center, b.position.x(), b.position.y(), b.position.z());
+    glUniform1f(m_ru.planetR, b.radius);
+    glUniform1i(m_ru.tex, 0);
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, b.ringTexId);
+
+    // flat disc: visible from both sides; keep the depth test on (the planet
+    // hides the far ring) but write no depth, and alpha-blend with the scene
+    // default over everything already drawn
+    glDisable(GL_CULL_FACE);
+    glDepthMask(GL_FALSE);
+    m_ring->draw();
+    glDepthMask(GL_TRUE);
+    glEnable(GL_CULL_FACE);
+
+    m_ringProg->release();
+}
+
 void SpaceScene::paintGL()
 {
     const float dt = std::min(0.1f, m_lastFrame.restart() / 1000.0f);
@@ -683,6 +765,12 @@ void SpaceScene::paintGL()
     });
     for (size_t i : order)
         drawAtmosphere(i, proj, view);
+
+    // rings last: thin translucent discs blended over the already-drawn
+    // planet/gas (same accepted ordering approximation as the atmosphere pass)
+    for (size_t i = 0; i < m_bodies.size(); ++i)
+        if (m_bodies[i].ringOn)
+            drawRing(i, proj, view);
 
     if (!m_shotPath.isEmpty()) {
         ++m_shotCount;

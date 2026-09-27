@@ -138,4 +138,55 @@ void sphereData(int lat, int lon,
         }
     }
 }
+
+void ringData(float rIn, float rOut, int segs,
+              QVector<float> &pos, QVector<float> &nrm,
+              QVector<float> &uv, QVector<unsigned int> &idx)
+{
+    if (segs < 3 || rOut <= rIn)
+        return;
+
+    pos.clear();
+    nrm.clear();
+    uv.clear();
+    idx.clear();
+
+    for (int i = 0; i <= segs; ++i) {
+        const float a = 2.0f * (float)M_PI * (float)i / (float)segs;
+        const float ca = cosf(a);
+        const float sa = sinf(a);
+        const float v = (float)i / (float)segs;
+
+        pos.append(rIn * ca);
+        pos.append(0.0f);
+        pos.append(rIn * sa);
+        nrm.append(0.0f);
+        nrm.append(1.0f);
+        nrm.append(0.0f);
+        uv.append(0.0f);
+        uv.append(v);
+
+        pos.append(rOut * ca);
+        pos.append(0.0f);
+        pos.append(rOut * sa);
+        nrm.append(0.0f);
+        nrm.append(1.0f);
+        nrm.append(0.0f);
+        uv.append(1.0f);
+        uv.append(v);
+    }
+
+    for (int i = 0; i < segs; ++i) {
+        const unsigned int a = (unsigned int)(2 * i);
+        const unsigned int b = a + 1;
+        const unsigned int c = a + 2;
+        const unsigned int d = a + 3;
+        idx.append(a);
+        idx.append(b);
+        idx.append(c);
+        idx.append(b);
+        idx.append(d);
+        idx.append(c);
+    }
+}
 }
