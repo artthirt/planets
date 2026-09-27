@@ -254,7 +254,7 @@ void SpaceScene::buildScene()
         ur.name = "Uranus";
         ur.radius = 56.0f;
         ur.texture = ":/data/uranus.jpg";
-        ur.orbitRadius = 450.0f;
+        ur.orbitRadius = 900.0f;
         ur.orbitPeriod = 2880.0f;  // ~48 min at 1x time
         ur.orbitPhaseDeg = 240.0f;
         ur.orbitInclDeg = -25.0f;
