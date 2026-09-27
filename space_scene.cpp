@@ -20,6 +20,10 @@ float deg2rad(float d)
 {
     return d * (float)M_PI / 180.0f;
 }
+
+// apparent angular radius of the painted sun disc (~0.8 deg); it sets the
+// penumbra width of the shadows every body casts
+constexpr float kSunAngleRad = 0.01396f;
 }
 
 SpaceScene::SpaceScene()
@@ -165,6 +169,9 @@ void SpaceScene::buildScene()
     m_pu.atmOn = m_planetProg->uniformLocation("uAtmOn");
     m_pu.spec = m_planetProg->uniformLocation("uSpec");
     m_pu.shin = m_planetProg->uniformLocation("uShin");
+    m_pu.occluders = m_planetProg->uniformLocation("uOccluders[0]");
+    m_pu.occluderCount = m_planetProg->uniformLocation("uOccluderCount");
+    m_pu.sunAngle = m_planetProg->uniformLocation("uSunAngle");
     m_planetProg->release();
 
     m_skyProg->bind();
@@ -364,8 +371,9 @@ void SpaceScene::drawSky(const QMatrix4x4 &proj, const QMatrix4x4 &view)
     m_skyProg->release();
 }
 
-void SpaceScene::drawBody(const Body &b, const QMatrix4x4 &proj, const QMatrix4x4 &view)
+void SpaceScene::drawBody(size_t i, const QMatrix4x4 &proj, const QMatrix4x4 &view)
 {
+    const Body &b = m_bodies[i];
     if (!b.texId)
         return;
 
@@ -373,6 +381,20 @@ void SpaceScene::drawBody(const Body &b, const QMatrix4x4 &proj, const QMatrix4x
     model.translate(b.position);
     model.rotate(m_time * b.spinPeriodDeg, 0.0f, 1.0f, 0.0f);
     model.scale(b.radius);
+
+    // every other body can cast a shadow on this one
+    float occ[8 * 4] = {0};
+    int nOcc = 0;
+    for (size_t j = 0; j < m_bodies.size() && nOcc < 8; ++j) {
+        if (j == i)
+            continue;
+        const Body &o = m_bodies[j];
+        occ[nOcc * 4 + 0] = o.position.x();
+        occ[nOcc * 4 + 1] = o.position.y();
+        occ[nOcc * 4 + 2] = o.position.z();
+        occ[nOcc * 4 + 3] = o.radius;
+        ++nOcc;
+    }
 
     m_planetProg->bind();
     glUniformMatrix4fv(m_pu.model, 1, GL_FALSE, (const float *)model.data());
@@ -385,6 +407,9 @@ void SpaceScene::drawBody(const Body &b, const QMatrix4x4 &proj, const QMatrix4x
     glUniform1f(m_pu.atmOn, b.atmosphereOn ? 1.0f : 0.0f);
     glUniform1f(m_pu.spec, b.specularStrength);
     glUniform1f(m_pu.shin, b.shininess);
+    glUniform4fv(m_pu.occluders, 8, occ);
+    glUniform1i(m_pu.occluderCount, nOcc);
+    glUniform1f(m_pu.sunAngle, kSunAngleRad);
     glUniform1i(m_pu.tex, 0);
 
     glActiveTexture(GL_TEXTURE0);
@@ -420,8 +445,8 @@ void SpaceScene::paintGL()
     const QMatrix4x4 view = m_cam.viewMatrix();
 
     drawSky(proj, view);
-    for (const Body &b : m_bodies)
-        drawBody(b, proj, view);
+    for (size_t i = 0; i < m_bodies.size(); i++)
+        drawBody(i, proj, view);
 
     if (!m_shotPath.isEmpty()) {
         ++m_shotCount;

@@ -57,7 +57,7 @@ private:
     void cycleFocus();
 
     void drawSky(const QMatrix4x4 &proj, const QMatrix4x4 &view);
-    void drawBody(const Body &b, const QMatrix4x4 &proj, const QMatrix4x4 &view);
+    void drawBody(size_t i, const QMatrix4x4 &proj, const QMatrix4x4 &view);
     void saveScreenshot();
 
     // GL resources
@@ -70,7 +70,7 @@ private:
     float m_maxAniso = 1.0f;
 
     // shader uniform locations (valid after bind())
-    struct PlanetUniforms { int model, view, proj, camPos, sunDir, sunColor, tex, atmColor, atmOn, spec, shin; };
+    struct PlanetUniforms { int model, view, proj, camPos, sunDir, sunColor, tex, atmColor, atmOn, spec, shin, occluders, occluderCount, sunAngle; };
     struct SkyUniforms { int model, view, proj, camPos, sunDir, sunColor, skyTex; };
     PlanetUniforms m_pu{};
     SkyUniforms m_su{};
