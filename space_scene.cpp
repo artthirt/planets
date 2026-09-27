@@ -176,6 +176,12 @@ void SpaceScene::buildScene()
     m_pu.occluders = m_planetProg->uniformLocation("uOccluders[0]");
     m_pu.occluderCount = m_planetProg->uniformLocation("uOccluderCount");
     m_pu.sunAngle = m_planetProg->uniformLocation("uSunAngle");
+    m_pu.ringCenter = m_planetProg->uniformLocation("uRingCenter");
+    m_pu.ringNormal = m_planetProg->uniformLocation("uRingNormal");
+    m_pu.ringInner = m_planetProg->uniformLocation("uRingInner");
+    m_pu.ringOuter = m_planetProg->uniformLocation("uRingOuter");
+    m_pu.ringOn = m_planetProg->uniformLocation("uRingOn");
+    m_pu.ringTex = m_planetProg->uniformLocation("uRingTex");
     m_planetProg->release();
 
     m_skyProg->bind();
@@ -590,6 +596,23 @@ void SpaceScene::drawBody(size_t i, const QMatrix4x4 &proj, const QMatrix4x4 &vi
 
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, b.texId);
+
+    // the body's own ring casts a sharp shadow band across the day side
+    // (stage D2c); other bodies have none
+    if (b.ringOn && b.ringTexId) {
+        const float ct = cosf(deg2rad(b.ringTiltDeg));
+        const float st = sinf(deg2rad(b.ringTiltDeg));
+        glUniform3f(m_pu.ringCenter, b.position.x(), b.position.y(), b.position.z());
+        glUniform3f(m_pu.ringNormal, 0.0f, ct, st); // (0,1,0) rotated around X
+        glUniform1f(m_pu.ringInner, b.radius * b.ringInnerScale);
+        glUniform1f(m_pu.ringOuter, b.radius * b.ringOuterScale);
+        glUniform1i(m_pu.ringOn, 1);
+        glUniform1i(m_pu.ringTex, 1);
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, b.ringTexId);
+    } else {
+        glUniform1i(m_pu.ringOn, 0);
+    }
 
     m_sphere->draw();
 

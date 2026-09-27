@@ -51,6 +51,32 @@ uniform float uShin;
 uniform vec4 uOccluders[16]; // other bodies: xyz center, w radius (shadows)
 uniform int uOccluderCount;
 uniform float uSunAngle;   // apparent sun radius, radians (penumbra width)
+uniform vec3 uRingCenter;  // own ring: plane through this point
+uniform vec3 uRingNormal;  // ... with this normal (tilted)
+uniform float uRingInner;  // annulus radii, world units
+uniform float uRingOuter;
+uniform int uRingOn;       // 1 = the body has a ring that can shadow it
+uniform sampler2D uRingTex;
+
+// How much of the direct sunlight does the body's own ring block at p?
+// The ring is a flat annulus, so its shadow is a sharp band: the ray
+// p -> p + t*L crosses the ring plane exactly once.
+float ringShadow(vec3 p, vec3 L)
+{
+    if (uRingOn == 0)
+        return 0.0;
+    float dn = dot(L, uRingNormal);
+    if (abs(dn) < 0.0001)
+        return 0.0; // sun in the ring plane: rays never cross it
+    float t = dot(uRingCenter - p, uRingNormal) / dn;
+    if (t <= 0.0)
+        return 0.0; // crossing behind the point
+    float r = length(p + L * t - uRingCenter);
+    if (r < uRingInner || r > uRingOuter)
+        return 0.0; // crossing outside the annulus
+    float u = (r - uRingInner) / (uRingOuter - uRingInner);
+    return texture(uRingTex, vec2(u, 0.5)).a;
+}
 
 // Does any occluder sphere block the ray p -> p + t*dir (t > 0)?
 float occluded(vec3 p, vec3 dir)
@@ -102,7 +128,7 @@ void main()
     // compile-time constant expression (error C1059 on NVIDIA).
     float diff = max(dot(N, L), 0.0);
     float shadowAtt = sunShadowAtt(vWorldPos, L);
-    float lit = diff * shadowAtt;
+    float lit = diff * shadowAtt * (1.0 - ringShadow(vWorldPos, L));
     vec3 H = normalize(L + V);
     // glint only where the sun actually hits: no specular on the night side
     float spec = pow(max(dot(N, H), 0.0), uShin) * uSpec * lit;
