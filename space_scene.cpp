@@ -213,6 +213,8 @@ void SpaceScene::buildScene()
     m_au.spin = m_atmProg->uniformLocation("uSpin");
     m_au.time = m_atmProg->uniformLocation("uTime");
     m_au.noiseAmt = m_atmProg->uniformLocation("uNoiseAmt");
+    m_au.occluders = m_atmProg->uniformLocation("uOccluders[0]");
+    m_au.occluderCount = m_atmProg->uniformLocation("uOccluderCount");
     m_atmProg->release();
 
     m_atmFsProg->bind();
@@ -230,6 +232,8 @@ void SpaceScene::buildScene()
     m_afu.spin = m_atmFsProg->uniformLocation("uSpin");
     m_afu.time = m_atmFsProg->uniformLocation("uTime");
     m_afu.noiseAmt = m_atmFsProg->uniformLocation("uNoiseAmt");
+    m_afu.occluders = m_atmFsProg->uniformLocation("uOccluders[0]");
+    m_afu.occluderCount = m_atmFsProg->uniformLocation("uOccluderCount");
     m_atmFsProg->release();
 
     // --- geometry: one shared unit sphere for everything ---
@@ -493,6 +497,19 @@ void SpaceScene::drawAtmosphere(size_t i, const QMatrix4x4 &proj, const QMatrix4
     const float scaleH = b.radius * b.atmosphereScaleHeightRatio;
     const bool inside = (m_cam.position - b.position).length() < shellR;
 
+    // every solid body shadows the gas — including the planet itself, whose
+    // night-side gas sits in its own umbra (proper terminator on the gas)
+    float occ[8 * 4] = {0};
+    int nOcc = 0;
+    for (size_t j = 0; j < m_bodies.size() && nOcc < 8; ++j) {
+        const Body &o = m_bodies[j];
+        occ[nOcc * 4 + 0] = o.position.x();
+        occ[nOcc * 4 + 1] = o.position.y();
+        occ[nOcc * 4 + 2] = o.position.z();
+        occ[nOcc * 4 + 3] = o.radius;
+        ++nOcc;
+    }
+
     ShaderProgram *prog;
     const Mesh *mesh;
     if (inside) {
@@ -516,6 +533,8 @@ void SpaceScene::drawAtmosphere(size_t i, const QMatrix4x4 &proj, const QMatrix4
         glUniform1f(m_afu.spin, m_time * b.spinPeriodDeg * 0.017453293f);
         glUniform1f(m_afu.time, m_time);
         glUniform1f(m_afu.noiseAmt, b.atmosphereNoise);
+        glUniform4fv(m_afu.occluders, 8, occ);
+        glUniform1i(m_afu.occluderCount, nOcc);
         glUniform1i(m_afu.tex, 0);
     } else {
         // camera outside: draw the shell's near hemisphere; the far one is
@@ -542,6 +561,8 @@ void SpaceScene::drawAtmosphere(size_t i, const QMatrix4x4 &proj, const QMatrix4
         glUniform1f(m_au.spin, m_time * b.spinPeriodDeg * 0.017453293f);
         glUniform1f(m_au.time, m_time);
         glUniform1f(m_au.noiseAmt, b.atmosphereNoise);
+        glUniform4fv(m_au.occluders, 8, occ);
+        glUniform1i(m_au.occluderCount, nOcc);
         glUniform1i(m_au.tex, 0);
     }
 

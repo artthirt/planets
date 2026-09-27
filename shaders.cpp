@@ -188,6 +188,8 @@ uniform sampler2D uTex;    // planet surface texture: luminance masks the gas
 uniform float uSpin;       // planet spin angle, radians (world Y)
 uniform float uTime;       // scene time, drives the slow gas drift
 uniform float uNoiseAmt;   // 0..1, FBM detail amount (0 = smooth gas)
+uniform vec4 uOccluders[8]; // solid bodies: xyz center, w radius (sun shadows)
+uniform int uOccluderCount;
 
 float hash13(vec3 p)
 {
@@ -224,6 +226,24 @@ float fbm(vec3 p)
         a *= 0.5;
     }
     return s; // ~[0, 0.94]
+}
+
+// Does any occluder sphere block the ray p -> p + t*dir (t > 0)?
+// Single tap (sun disc center): the penumbra is sub-pixel here.
+float occluded(vec3 p, vec3 dir)
+{
+    for (int i = 0; i < uOccluderCount; i++) {
+        vec3 d = uOccluders[i].xyz - p;
+        float b = dot(d, dir);
+        if (b <= 0.0)
+            continue; // sphere behind the point
+        float r2 = dot(d, d) - uOccluders[i].w * uOccluders[i].w;
+        if (r2 >= b * b)
+            continue; // ray misses the sphere
+        if (b - sqrt(b * b - r2) > 0.0)
+            return 1.0;
+    }
+    return 0.0;
 }
 
 void main()
@@ -279,11 +299,15 @@ void main()
         float sigma = dens * ds;
         if (sigma < 1e-6)
             continue;
-        // per-sample sunlight: smooth terminator, a whisper on the night side
+        // per-sample sunlight: smooth terminator, a whisper on the night side.
+        // A solid body (the planet itself included) blocks the sun: night-side
+        // gas near the surface sits in the planet's own umbra, only high gas
+        // can see the sun over the limb
         vec3 N = (p - uCenter) / (h + uPlanetR);
         float day = smoothstep(-0.25, 0.35, dot(N, uSunDir));
+        float sh = 1.0 - occluded(p, uSunDir);
         float a = 1.0 - exp(-sigma);
-        acc += trans * a * uAtmColor * uSunColor * (0.02 + 0.98 * day);
+        acc += trans * a * uAtmColor * uSunColor * (0.02 + 0.98 * day * sh);
         trans *= (1.0 - a);
         if (trans < 0.02)
             break; // optically thick: nothing left to add

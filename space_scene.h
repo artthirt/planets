@@ -76,8 +76,8 @@ private:
     // shader uniform locations (valid after bind())
     struct PlanetUniforms { int model, view, proj, camPos, sunDir, sunColor, tex, spec, shin, occluders, occluderCount, sunAngle; };
     struct SkyUniforms { int model, view, proj, camPos, sunDir, sunColor, skyTex; };
-    struct AtmUniforms { int model, view, proj, camPos, center, planetR, shellR, sunDir, sunColor, atmColor, density, scaleH, tex, spin, time, noiseAmt; };
-    struct AtmFsUniforms { int invViewProj, camPos, center, planetR, shellR, sunDir, sunColor, atmColor, density, scaleH, tex, spin, time, noiseAmt; };
+    struct AtmUniforms { int model, view, proj, camPos, center, planetR, shellR, sunDir, sunColor, atmColor, density, scaleH, tex, spin, time, noiseAmt, occluders, occluderCount; };
+    struct AtmFsUniforms { int invViewProj, camPos, center, planetR, shellR, sunDir, sunColor, atmColor, density, scaleH, tex, spin, time, noiseAmt, occluders, occluderCount; };
     PlanetUniforms m_pu{};
     SkyUniforms m_su{};
     AtmUniforms m_au{};
