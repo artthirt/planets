@@ -8,13 +8,14 @@ int main(int argc, char *argv[])
 	QApplication a(argc, argv);
 
 	// hidden CLI, for verification:
-	//   Planets.exe --screenshot out.png [--frames N] [--cam x,y,z,yawDeg,pitchDeg]
+	//   Planets.exe --screenshot out.png [--frames N] [--cam x,y,z,yawDeg,pitchDeg] [--focus name]
 	QString shotPath;
 	int shotFrames = 40;
 	QVector3D camPos;
 	float camYaw = 0.0f;
 	float camPitch = 0.0f;
 	bool camSet = false;
+	QString focusName;
 
 	for (int i = 1; i < argc; ++i) {
 		const QString arg = QString::fromLocal8Bit(argv[i]);
@@ -33,6 +34,8 @@ int main(int argc, char *argv[])
 				camPitch = p[4].toFloat();
 				camSet = true;
 			}
+		} else if (arg == "--focus") {
+			focusName = next();
 		}
 	}
 
@@ -40,6 +43,8 @@ int main(int argc, char *argv[])
 	if (!shotPath.isEmpty()) {
 		if (camSet)
 			w.scene()->setCameraForShot(camPos, camYaw, camPitch);
+		if (!focusName.isEmpty())
+			w.scene()->focusByName(focusName);
 		w.scene()->requestScreenshot(shotPath, shotFrames);
 	}
 	w.show();

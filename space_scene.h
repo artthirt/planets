@@ -28,6 +28,10 @@ public:
 
     void setSpeed(float timeScale);
 
+    // focus control (click-to-pick, M cycle, Esc release, --focus CLI)
+    void focusBody(int index);
+    void focusByName(const QString &name);
+
     // hidden CLI helpers (screenshot mode)
     void setCameraForShot(const QVector3D &pos, float yawDeg, float pitchDeg);
     void requestScreenshot(const QString &path, int frames);
@@ -55,6 +59,7 @@ private:
     void updateOrbits();
     void updateCamera(float dt);
     void cycleFocus();
+    int pickBody(const QPoint &pos) const;
 
     void drawSky(const QMatrix4x4 &proj, const QMatrix4x4 &view);
     void drawBody(size_t i, const QMatrix4x4 &proj, const QMatrix4x4 &view);
@@ -100,6 +105,7 @@ private:
     float m_focusDist = 4.0f;    // body radii
     QPoint m_lastMouse;
     bool m_dragging = false;
+    float m_dragTotal = 0.0f;   // accumulated drag distance (click vs drag)
     QMap<int, bool> m_keys;
 
     // animation

@@ -524,7 +524,104 @@ void SpaceScene::cycleFocus()
 
     const QString name = (m_focus < 0) ? QString("free fly") : m_bodies[m_focus].name;
     emit focusChanged(name);
-    emit infoChanged(QString("%1 — W/S zoom, drag to orbit, M to cycle").arg(name));
+    emit infoChanged(QString("%1 — W/S zoom, drag to orbit, M to cycle, Esc to release").arg(name));
+}
+
+void SpaceScene::focusBody(int index)
+{
+    if (index < 0 || (size_t)index >= m_bodies.size())
+        return;
+    m_focus = index;
+    m_focusDist = 4.0f;
+    const QString name = m_bodies[index].name;
+    emit focusChanged(name);
+    emit infoChanged(QString("%1 — W/S zoom, drag to orbit, M to cycle, Esc to release").arg(name));
+}
+
+void SpaceScene::focusByName(const QString &name)
+{
+    for (size_t i = 0; i < m_bodies.size(); ++i) {
+        if (m_bodies[i].name.compare(name, Qt::CaseInsensitive) == 0) {
+            focusBody((int)i);
+            return;
+        }
+    }
+}
+
+// Ray-pick a body under the given (logical) screen pixel.
+// Pass 1: true sphere radii, nearest hit wins.
+// Pass 2: sub-pixel bodies (moons) get a few pixels of angular slack.
+int SpaceScene::pickBody(const QPoint &pos) const
+{
+    const float w = float(width());
+    const float h = float(height());
+    if (w < 2.0f || h < 2.0f)
+        return -1;
+
+    // camera ray through the pixel
+    const float fovHalf = deg2rad(m_cam.fovDeg * 0.5f);
+    const float aspect = w / h;
+    const float ndcX = ((2.0f * float(pos.x()) / w) - 1.0f) * std::tan(fovHalf) * aspect;
+    const float ndcY = (1.0f - (2.0f * float(pos.y()) / h)) * std::tan(fovHalf);
+
+    const QVector3D f = m_cam.forward();
+    const QVector3D rL = m_cam.right();   // screen-left in this build
+    const QVector3D rR(-rL.x(), -rL.y(), -rL.z());
+    const QVector3D u(f.y() * rL.z() - f.z() * rL.y(),
+                      f.z() * rL.x() - f.x() * rL.z(),
+                      f.x() * rL.y() - f.y() * rL.x());
+    QVector3D dir = f + rR * ndcX + u * ndcY;
+    const float dl = dir.length();
+    if (dl < 1e-6f)
+        return -1;
+    dir /= dl;
+
+    const QVector3D o = m_cam.position;
+    auto dot = [](const QVector3D &a, const QVector3D &b) {
+        return a.x() * b.x() + a.y() * b.y() + a.z() * b.z();
+    };
+
+    int best = -1;
+    float bestT = 0.0f;
+    for (size_t i = 0; i < m_bodies.size(); ++i) {
+        const Body &b = m_bodies[i];
+        const QVector3D oc = o - b.position;
+        const float bq = dot(oc, dir);
+        const float cq = dot(oc, oc) - b.radius * b.radius;
+        const float disc = bq * bq - cq;
+        if (disc < 0.0f)
+            continue;
+        const float t = -bq - std::sqrt(disc);
+        if (t <= 0.0f)
+            continue;
+        if (best < 0 || t < bestT) {
+            bestT = t;
+            best = (int)i;
+        }
+    }
+    if (best >= 0)
+        return best;
+
+    // pass 2: allow a few pixels of slack around the angular silhouette
+    const float margin = 6.0f * deg2rad(m_cam.fovDeg) / h;
+    for (size_t i = 0; i < m_bodies.size(); ++i) {
+        const Body &b = m_bodies[i];
+        QVector3D toC = b.position - o;
+        const float dist = toC.length();
+        if (dist < 1e-3f)
+            continue;
+        toC /= dist;
+        const float angC = std::acos(std::clamp(-dot(dir, toC), -1.0f, 1.0f));
+        const float angR = std::asin(std::clamp(b.radius / dist, 0.0f, 1.0f));
+        if (angC >= angR + margin)
+            continue;
+        const float t = -dot(o - b.position, dir);
+        if (best < 0 || t < bestT) {
+            bestT = t;
+            best = (int)i;
+        }
+    }
+    return best;
 }
 
 void SpaceScene::drawSky(const QMatrix4x4 &proj, const QMatrix4x4 &view)
@@ -827,6 +924,7 @@ void SpaceScene::saveScreenshot()
 void SpaceScene::mousePressEvent(QMouseEvent *e)
 {
     m_lastMouse = e->pos();
+    m_dragTotal = 0.0f;
     m_dragging = true;
 }
 
@@ -836,6 +934,7 @@ void SpaceScene::mouseMoveEvent(QMouseEvent *e)
         return;
     const QPoint d = e->pos() - m_lastMouse;
     m_lastMouse = e->pos();
+    m_dragTotal += std::sqrt(float(d.x() * d.x() + d.y() * d.y()));
 
     // drag = grab the scene: moving the mouse right/down turns the view left/up
     m_cam.yaw -= d.x() * 0.005f;
@@ -843,9 +942,19 @@ void SpaceScene::mouseMoveEvent(QMouseEvent *e)
     m_cam.clampPitch();
 }
 
-void SpaceScene::mouseReleaseEvent(QMouseEvent *)
+void SpaceScene::mouseReleaseEvent(QMouseEvent *e)
 {
+    const bool wasDragging = m_dragging;
     m_dragging = false;
+    if (!wasDragging || e->button() != Qt::LeftButton)
+        return;
+
+    // a left click without dragging picks a body and starts following it
+    if (m_dragTotal < 5.0f) {
+        const int idx = pickBody(e->pos());
+        if (idx >= 0)
+            focusBody(idx);
+    }
 }
 
 void SpaceScene::wheelEvent(QWheelEvent *e)
@@ -862,8 +971,14 @@ void SpaceScene::wheelEvent(QWheelEvent *e)
 void SpaceScene::keyPressEvent(QKeyEvent *e)
 {
     m_keys[e->key()] = true;
-    if (e->key() == Qt::Key_M)
+    if (e->key() == Qt::Key_M) {
         cycleFocus();
+    } else if (e->key() == Qt::Key_Escape && m_focus >= 0) {
+        m_focus = -1;
+        m_focusDist = 4.0f;
+        emit focusChanged(QStringLiteral("free fly"));
+        emit infoChanged(QStringLiteral("free fly — WASD fly, wheel zoom, M to cycle, click a body to track"));
+    }
 }
 
 void SpaceScene::keyReleaseEvent(QKeyEvent *e)

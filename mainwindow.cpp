@@ -14,7 +14,7 @@ MainWindow::MainWindow(QWidget *parent) :
 	connect(&m_scene, &SpaceScene::infoChanged, this, &MainWindow::onSceneInfo);
 
 	statusBar()->showMessage(
-		"WASD fly · Q/E down/up · Shift boost · drag look · wheel zoom · M focus body");
+		"WASD fly · Q/E down/up · Shift boost · drag look · wheel zoom · click a body to track · M cycle · Esc release");
 
 	resize(1100, 640);
 }
