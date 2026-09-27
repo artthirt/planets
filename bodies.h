@@ -27,9 +27,9 @@ struct Body
     // atmosphere (stage C: raymarched gas shell)
     bool atmosphereOn = false;
     QVector3D atmosphereColor{0.30f, 0.52f, 1.0f};
-    float atmosphereRadiusScale = 1.18f; // shell outer radius = ratio * radius
+    float atmosphereRadiusScale = 1.08f; // shell outer radius = ratio * radius (thin shell)
     float atmosphereDensity = 1.0f;      // base optical density at the surface
-    float atmosphereScaleHeightRatio = 0.06f; // scale height = ratio * radius
+    float atmosphereScaleHeightRatio = 0.035f; // scale height = ratio * radius (tight falloff)
     float atmosphereNoise = 0.0f;        // 0..1, FBM detail amount
 
     // runtime
