@@ -78,44 +78,44 @@ float ringShadow(vec3 p, vec3 L)
     return texture(uRingTex, vec2(u, 0.5)).a;
 }
 
-// Does any occluder sphere block the ray p -> p + t*dir (t > 0)?
-float occluded(vec3 p, vec3 dir)
+// Area of overlap of two discs (radii r1, r2; center distance d, all in
+// radians). Closed form, degenerate cases handled.
+float discOverlap(float r1, float r2, float d)
 {
-    for (int i = 0; i < uOccluderCount; i++) {
-        vec3 d = uOccluders[i].xyz - p;
-        float b = dot(d, dir);
-        if (b <= 0.0)
-            continue; // sphere behind the point
-        float r2 = dot(d, d) - uOccluders[i].w * uOccluders[i].w;
-        if (r2 >= b * b)
-            continue; // ray misses the sphere
-        if (b - sqrt(b * b - r2) > 0.0)
-            return 1.0;
-    }
-    return 0.0;
+    if (d >= r1 + r2)
+        return 0.0;
+    if (d <= max(r1, r2) - min(r1, r2))
+        return 3.14159265 * min(r1, r2) * min(r1, r2);
+    float c1 = clamp((d * d + r1 * r1 - r2 * r2) / (2.0 * d * r1), -1.0, 1.0);
+    float c2 = clamp((d * d + r2 * r2 - r1 * r1) / (2.0 * d * r2), -1.0, 1.0);
+    float tri = 0.5 * sqrt(max((-d + r1 + r2) * (d + r1 - r2) * (d - r1 + r2) * (d + r1 + r2), 0.0));
+    return r1 * r1 * acos(c1) + r2 * r2 * acos(c2) - tri;
 }
 
-// Soft shadow: the painted sun has an apparent disc, so sample it —
-// 1 = full sunlight, 0 = deep umbra, gradient in between (penumbra).
+// Soft shadow: the painted sun has an apparent disc (radius uSunAngle), so
+// the true attenuation at p is the fraction of that disc blocked. Compute
+// it exactly per occluder: the sphere subtends a disc of radius asin(r/D)
+// at p, and the blocked fraction is the overlap of the two discs.
+// Stage B's fixed 9-tap grid aliased small moon shadows into a rosette of
+// spots (one per tap); the analytic form is smooth at any occluder size.
 float sunShadowAtt(vec3 p, vec3 L)
 {
-    vec3 ref = abs(L.y) < 0.99 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0);
-    vec3 t1 = normalize(cross(ref, L));
-    vec3 t2 = cross(L, t1);
-    float a = uSunAngle; // no const: a uniform is not a compile-time constant (C1059)
-
-    float occ = occluded(p, L); // disc center
-    for (int i = 0; i < 4; i++) {
-        float ang = 0.7853982 * (1.0 + 2.0 * float(i));
-        vec3 d = L * cos(a * 0.55) + (t1 * cos(ang) + t2 * sin(ang)) * sin(a * 0.55);
-        occ += occluded(p, normalize(d));
+    float a = uSunAngle;
+    float att = 1.0; // product of per-occluder unblocked fractions
+    for (int i = 0; i < uOccluderCount; i++) {
+        vec3 d = uOccluders[i].xyz - p;
+        float D = length(d);
+        float r = uOccluders[i].w;
+        if (D < r)
+            return 0.0; // point inside the occluder
+        float alpha = asin(clamp(r / D, 0.0, 1.0));
+        float delta = acos(clamp(dot(L, d / D), -1.0, 1.0));
+        float blocked = clamp(discOverlap(a, alpha, delta) / (3.14159265 * a * a), 0.0, 1.0);
+        att *= 1.0 - blocked;
+        if (att < 1e-4)
+            break; // deep umbra: nothing left to darken
     }
-    for (int i = 0; i < 4; i++) {
-        float ang = 1.5707963 * float(i);
-        vec3 d = L * cos(a) + (t1 * cos(ang) + t2 * sin(ang)) * sin(a);
-        occ += occluded(p, normalize(d));
-    }
-    return 1.0 - occ / 9.0;
+    return att;
 }
 
 void main()
