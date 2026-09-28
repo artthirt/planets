@@ -298,8 +298,10 @@ void main()
     // per-pixel random phase of the sample grid: a fixed grid slides across
     // the density profile as the ray path length changes, and the quadrature
     // error forms visible concentric rings (contours of equal path length).
-    // Jittering breaks them into invisible noise
-    float jit = hash13(rd * 71.3);
+    // Jittering breaks them into invisible noise. Hash the pixel, not the ray
+    // direction: the world-space ray changes every frame while the camera
+    // moves, and a ray-dependent jitter makes the atmosphere shimmer
+    float jit = hash13(vec3(gl_FragCoord.xy, 0.0) * 71.3);
 
     float trans = 1.0;    // accumulated transmittance
     vec3 acc = vec3(0.0); // accumulated in-scattered light
@@ -325,7 +327,9 @@ void main()
             vec2 tuv = vec2(atan(q.x, q.z) * 0.15915494 + 0.5,
                             acos(clamp(q.y, -1.0, 1.0)) * 0.31830989);
             float luma = dot(texture(uTex, tuv).rgb, vec3(0.299, 0.587, 0.114));
-            float n = fbm(q * (uPlanetR * 0.08) + uTime * vec3(0.011, 0.007, 0.013));
+            // noise is fixed in the rotating frame (no uTime drift): the
+            // cloud pattern rotates with the surface instead of shimmering
+            float n = fbm(q * (uPlanetR * 0.08));
             dens *= mix(0.35, 1.35, luma) * mix(1.0, 0.35 + 1.3 * n, uNoiseAmt);
         }
         float sigma = dens * ds;
