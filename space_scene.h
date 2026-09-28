@@ -84,8 +84,8 @@ private:
     // shader uniform locations (valid after bind())
     struct PlanetUniforms { int model, view, proj, camPos, sunDir, sunColor, tex, spec, shin, occluders, occluderCount, sunAngle, ringCenter, ringNormal, ringInner, ringOuter, ringOn, ringTex; };
     struct SkyUniforms { int model, view, proj, camPos, sunDir, sunColor, skyTex; };
-    struct AtmUniforms { int model, view, proj, camPos, center, planetR, shellR, sunDir, sunColor, atmColor, density, scaleH, tex, spin, time, noiseAmt, occluders, occluderCount; };
-    struct AtmFsUniforms { int invViewProj, camPos, center, planetR, shellR, sunDir, sunColor, atmColor, density, scaleH, tex, spin, time, noiseAmt, occluders, occluderCount; };
+    struct AtmUniforms { int model, view, proj, camPos, center, planetR, shellR, sunDir, sunColor, atmColor, density, scaleH, tex, spin, time, noiseAmt, occluders, occluderCount, sunAngle; };
+    struct AtmFsUniforms { int invViewProj, camPos, center, planetR, shellR, sunDir, sunColor, atmColor, density, scaleH, tex, spin, time, noiseAmt, occluders, occluderCount, sunAngle; };
     struct RingUniforms { int model, view, proj, sunDir, sunColor, center, planetR, tex; };
     PlanetUniforms m_pu{};
     SkyUniforms m_su{};

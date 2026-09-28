@@ -223,6 +223,7 @@ void SpaceScene::buildScene()
     m_au.noiseAmt = m_atmProg->uniformLocation("uNoiseAmt");
     m_au.occluders = m_atmProg->uniformLocation("uOccluders[0]");
     m_au.occluderCount = m_atmProg->uniformLocation("uOccluderCount");
+    m_au.sunAngle = m_atmProg->uniformLocation("uSunAngle");
     m_atmProg->release();
 
     m_atmFsProg->bind();
@@ -242,6 +243,7 @@ void SpaceScene::buildScene()
     m_afu.noiseAmt = m_atmFsProg->uniformLocation("uNoiseAmt");
     m_afu.occluders = m_atmFsProg->uniformLocation("uOccluders[0]");
     m_afu.occluderCount = m_atmFsProg->uniformLocation("uOccluderCount");
+    m_afu.sunAngle = m_atmFsProg->uniformLocation("uSunAngle");
     m_atmFsProg->release();
 
     m_ringProg = std::make_unique<ShaderProgram>();
@@ -768,6 +770,7 @@ void SpaceScene::drawAtmosphere(size_t i, const QMatrix4x4 &proj, const QMatrix4
         glUniform1f(m_afu.noiseAmt, b.atmosphereNoise);
         glUniform4fv(m_afu.occluders, 16, occ);
         glUniform1i(m_afu.occluderCount, nOcc);
+        glUniform1f(m_afu.sunAngle, kSunAngleRad);
         glUniform1i(m_afu.tex, 0);
     } else {
         // camera outside: draw the shell's near hemisphere; the far one is
@@ -796,6 +799,7 @@ void SpaceScene::drawAtmosphere(size_t i, const QMatrix4x4 &proj, const QMatrix4
         glUniform1f(m_au.noiseAmt, b.atmosphereNoise);
         glUniform4fv(m_au.occluders, 16, occ);
         glUniform1i(m_au.occluderCount, nOcc);
+        glUniform1f(m_au.sunAngle, kSunAngleRad);
         glUniform1i(m_au.tex, 0);
     }
 

@@ -216,6 +216,7 @@ uniform float uTime;       // scene time, drives the slow gas drift
 uniform float uNoiseAmt;   // 0..1, FBM detail amount (0 = smooth gas)
 uniform vec4 uOccluders[16]; // solid bodies: xyz center, w radius (sun shadows)
 uniform int uOccluderCount;
+uniform float uSunAngle;   // apparent sun radius, radians (penumbra width)
 
 float hash13(vec3 p)
 {
@@ -254,22 +255,54 @@ float fbm(vec3 p)
     return s; // ~[0, 0.94]
 }
 
-// Does any occluder sphere block the ray p -> p + t*dir (t > 0)?
-// Single tap (sun disc center): the penumbra is sub-pixel here.
-float occluded(vec3 p, vec3 dir)
+// Area of overlap of two discs (radii r1, r2; center distance d, in
+// radians). Closed form, degenerate cases handled. (Same as the planet
+// shader, stage D8.)
+float discOverlap(float r1, float r2, float d)
 {
+    if (d >= r1 + r2)
+        return 0.0;
+    if (d <= max(r1, r2) - min(r1, r2))
+        return 3.14159265 * min(r1, r2) * min(r1, r2);
+    float c1 = clamp((d * d + r1 * r1 - r2 * r2) / (2.0 * d * r1), -1.0, 1.0);
+    float c2 = clamp((d * d + r2 * r2 - r1 * r1) / (2.0 * d * r2), -1.0, 1.0);
+    float tri = 0.5 * sqrt(max((-d + r1 + r2) * (d + r1 - r2) * (d - r1 + r2) * (d + r1 + r2), 0.0));
+    return r1 * r1 * acos(c1) + r2 * r2 * acos(c2) - tri;
+}
+
+// Exact fraction of the painted sun disc blocked at p (stage D9): each
+// occluder sphere subtends a disc of radius asin(r/D) around its center
+// direction; blocked fraction = overlap with the sun disc (radius
+// uSunAngle), normalized by the sun disc area. Same analytic form as the
+// planet shader, so the gas terminator and moon shadows match the surface
+// exactly (the old single tap gave a hard, wrong penumbra).
+// A trig-free test rejects occluders whose discs cannot reach the sun disc,
+// so the common case stays cheap inside the march loop.
+float sunShadowAtt(vec3 p, vec3 L)
+{
+    float a = uSunAngle;
+    float ca = cos(a), sa = sin(a);
+    float sunArea = 3.14159265 * a * a;
+    float att = 1.0;
     for (int i = 0; i < uOccluderCount; i++) {
         vec3 d = uOccluders[i].xyz - p;
-        float b = dot(d, dir);
-        if (b <= 0.0)
-            continue; // sphere behind the point
-        float r2 = dot(d, d) - uOccluders[i].w * uOccluders[i].w;
-        if (r2 >= b * b)
-            continue; // ray misses the sphere
-        if (b - sqrt(b * b - r2) > 0.0)
-            return 1.0;
+        float D = length(d);
+        float r = uOccluders[i].w;
+        if (D < r)
+            return 0.0; // sample inside an occluder
+        // Discs overlap iff delta < a + alpha. Rewritten without acos/asin:
+        // cos(delta) = b/D and cos(a + alpha) = ca*sqrt(D^2-r^2)/D - sa*r/D
+        float b = dot(d, L);
+        if (b <= ca * sqrt(max(D * D - r * r, 0.0)) - sa * r)
+            continue;
+        float alpha = asin(clamp(r / D, 0.0, 1.0));
+        float delta = acos(clamp(b / D, -1.0, 1.0));
+        float blocked = clamp(discOverlap(a, alpha, delta) / sunArea, 0.0, 1.0);
+        att *= 1.0 - blocked;
+        if (att < 1e-4)
+            break;
     }
-    return 0.0;
+    return att;
 }
 
 void main()
@@ -341,7 +374,7 @@ void main()
         // can see the sun over the limb
         vec3 N = (p - uCenter) / (h + uPlanetR);
         float day = smoothstep(-0.25, 0.35, dot(N, uSunDir));
-        float sh = 1.0 - occluded(p, uSunDir);
+        float sh = sunShadowAtt(p, uSunDir);
         float a = 1.0 - exp(-sigma);
         acc += trans * a * uAtmColor * uSunColor * (0.02 + 0.98 * day * sh);
         trans *= (1.0 - a);
