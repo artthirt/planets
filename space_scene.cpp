@@ -224,6 +224,12 @@ void SpaceScene::buildScene()
     m_au.occluders = m_atmProg->uniformLocation("uOccluders[0]");
     m_au.occluderCount = m_atmProg->uniformLocation("uOccluderCount");
     m_au.sunAngle = m_atmProg->uniformLocation("uSunAngle");
+    m_au.ringOn = m_atmProg->uniformLocation("uRingOn");
+    m_au.ringCenter = m_atmProg->uniformLocation("uRingCenter");
+    m_au.ringNormal = m_atmProg->uniformLocation("uRingNormal");
+    m_au.ringInner = m_atmProg->uniformLocation("uRingInner");
+    m_au.ringOuter = m_atmProg->uniformLocation("uRingOuter");
+    m_au.ringTex = m_atmProg->uniformLocation("uRingTex");
     m_atmProg->release();
 
     m_atmFsProg->bind();
@@ -244,6 +250,12 @@ void SpaceScene::buildScene()
     m_afu.occluders = m_atmFsProg->uniformLocation("uOccluders[0]");
     m_afu.occluderCount = m_atmFsProg->uniformLocation("uOccluderCount");
     m_afu.sunAngle = m_atmFsProg->uniformLocation("uSunAngle");
+    m_afu.ringOn = m_atmFsProg->uniformLocation("uRingOn");
+    m_afu.ringCenter = m_atmFsProg->uniformLocation("uRingCenter");
+    m_afu.ringNormal = m_atmFsProg->uniformLocation("uRingNormal");
+    m_afu.ringInner = m_atmFsProg->uniformLocation("uRingInner");
+    m_afu.ringOuter = m_atmFsProg->uniformLocation("uRingOuter");
+    m_afu.ringTex = m_atmFsProg->uniformLocation("uRingTex");
     m_atmFsProg->release();
 
     m_ringProg = std::make_unique<ShaderProgram>();
@@ -771,6 +783,18 @@ void SpaceScene::drawAtmosphere(size_t i, const QMatrix4x4 &proj, const QMatrix4
         glUniform4fv(m_afu.occluders, 16, occ);
         glUniform1i(m_afu.occluderCount, nOcc);
         glUniform1f(m_afu.sunAngle, kSunAngleRad);
+        if (b.ringOn && b.ringTexId) {
+            const float ct = cosf(deg2rad(b.ringTiltDeg));
+            const float st = sinf(deg2rad(b.ringTiltDeg));
+            glUniform3f(m_afu.ringCenter, b.position.x(), b.position.y(), b.position.z());
+            glUniform3f(m_afu.ringNormal, 0.0f, ct, st); // (0,1,0) rotated around X
+            glUniform1f(m_afu.ringInner, b.radius * b.ringInnerScale);
+            glUniform1f(m_afu.ringOuter, b.radius * b.ringOuterScale);
+            glUniform1i(m_afu.ringOn, 1);
+            glUniform1i(m_afu.ringTex, 1);
+        } else {
+            glUniform1i(m_afu.ringOn, 0);
+        }
         glUniform1i(m_afu.tex, 0);
     } else {
         // camera outside: draw the shell's near hemisphere; the far one is
@@ -800,11 +824,28 @@ void SpaceScene::drawAtmosphere(size_t i, const QMatrix4x4 &proj, const QMatrix4
         glUniform4fv(m_au.occluders, 16, occ);
         glUniform1i(m_au.occluderCount, nOcc);
         glUniform1f(m_au.sunAngle, kSunAngleRad);
+        if (b.ringOn && b.ringTexId) {
+            const float ct = cosf(deg2rad(b.ringTiltDeg));
+            const float st = sinf(deg2rad(b.ringTiltDeg));
+            glUniform3f(m_au.ringCenter, b.position.x(), b.position.y(), b.position.z());
+            glUniform3f(m_au.ringNormal, 0.0f, ct, st); // (0,1,0) rotated around X
+            glUniform1f(m_au.ringInner, b.radius * b.ringInnerScale);
+            glUniform1f(m_au.ringOuter, b.radius * b.ringOuterScale);
+            glUniform1i(m_au.ringOn, 1);
+            glUniform1i(m_au.ringTex, 1);
+        } else {
+            glUniform1i(m_au.ringOn, 0);
+        }
         glUniform1i(m_au.tex, 0);
     }
 
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, b.texId);
+    if (b.ringOn && b.ringTexId) {
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, b.ringTexId);
+        glActiveTexture(GL_TEXTURE0);
+    }
     glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA); // premultiplied gas
     glDepthMask(GL_FALSE);
     mesh->draw();

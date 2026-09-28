@@ -217,6 +217,12 @@ uniform float uNoiseAmt;   // 0..1, FBM detail amount (0 = smooth gas)
 uniform vec4 uOccluders[16]; // solid bodies: xyz center, w radius (sun shadows)
 uniform int uOccluderCount;
 uniform float uSunAngle;   // apparent sun radius, radians (penumbra width)
+uniform vec3 uRingCenter;  // own ring: plane through this point
+uniform vec3 uRingNormal;  // ... with this normal (tilted)
+uniform float uRingInner;  // annulus radii, world units
+uniform float uRingOuter;
+uniform int uRingOn;       // 1 = the body has a ring that can shadow its gas
+uniform sampler2D uRingTex;
 
 float hash13(vec3 p)
 {
@@ -268,6 +274,28 @@ float discOverlap(float r1, float r2, float d)
     float c2 = clamp((d * d + r2 * r2 - r1 * r1) / (2.0 * d * r2), -1.0, 1.0);
     float tri = 0.5 * sqrt(max((-d + r1 + r2) * (d + r1 - r2) * (d - r1 + r2) * (d + r1 + r2), 0.0));
     return r1 * r1 * acos(c1) + r2 * r2 * acos(c2) - tri;
+}
+
+// How much of the direct sunlight does the body's own ring block at p?
+// The ring is a flat annulus, so its shadow is a sharp band: the ray
+// p -> p + t*L crosses the ring plane exactly once. (Same as the planet
+// shader, stage D2c — without this the band washes out toward the limb,
+// where the unshadowed gas dominates.)
+float ringShadow(vec3 p, vec3 L)
+{
+    if (uRingOn == 0)
+        return 0.0;
+    float dn = dot(L, uRingNormal);
+    if (abs(dn) < 0.0001)
+        return 0.0; // sun in the ring plane: rays never cross it
+    float t = dot(uRingCenter - p, uRingNormal) / dn;
+    if (t <= 0.0)
+        return 0.0; // crossing behind the point
+    float r = length(p + L * t - uRingCenter);
+    if (r < uRingInner || r > uRingOuter)
+        return 0.0; // crossing outside the annulus
+    float u = (r - uRingInner) / (uRingOuter - uRingInner);
+    return texture(uRingTex, vec2(u, 0.5)).a;
 }
 
 // Exact fraction of the painted sun disc blocked at p (stage D9): each
@@ -375,6 +403,7 @@ void main()
         vec3 N = (p - uCenter) / (h + uPlanetR);
         float day = smoothstep(-0.25, 0.35, dot(N, uSunDir));
         float sh = sunShadowAtt(p, uSunDir);
+        sh *= 1.0 - ringShadow(p, uSunDir); // ring shadow band through the gas
         float a = 1.0 - exp(-sigma);
         acc += trans * a * uAtmColor * uSunColor * (0.02 + 0.98 * day * sh);
         trans *= (1.0 - a);
