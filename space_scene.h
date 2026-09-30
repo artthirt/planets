@@ -98,7 +98,7 @@ private:
     std::vector<Body> m_bodies;
     QVector3D m_sunDir;
     QVector3D m_sunColor{1.0f, 0.94f, 0.84f};
-    static constexpr float kSkyRadius = 4600.0f;  // must stay outside the system (Saturn+Titan reach ~4270, D10)
+    static constexpr float kSkyRadius = 5600.0f;  // must stay outside the system (Saturn 4500 + Titan 672 reach ~5172)
 
     // camera / input
     Camera m_cam;

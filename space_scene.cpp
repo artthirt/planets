@@ -433,7 +433,7 @@ void SpaceScene::buildScene()
         // D10: static backdrop (orbitRadius 0 = fixed position) — the system
         // was expanded so Saturn/Uranus orbits no longer crowd each other
         sa.orbitRadius = 0.0f;
-        sa.position = QVector3D(1800.0f, 0.0f, 3118.0f); // 3600 out at 60 deg, ecliptic plane
+        sa.position = QVector3D(2250.0f, 0.0f, 3897.0f); // 4500 out at 60 deg, ecliptic plane
         sa.spinPeriodDeg = 8.0f; // fastest spinner in the scene
         sa.specularStrength = 0.0f;
         // pale golden haze: shell hugs the surface (default 1.05), inside the
