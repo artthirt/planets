@@ -18,6 +18,7 @@ int main(int argc, char *argv[])
 	float camPitch = 0.0f;
 	bool camSet = false;
 	QString focusName;
+	bool saveNormals = false;
 
 	for (int i = 1; i < argc; ++i) {
 		const QString arg = QString::fromLocal8Bit(argv[i]);
@@ -41,6 +42,8 @@ int main(int argc, char *argv[])
 		} else if (arg == "--time") {
 			shotTime = next().toDouble();
 			shotTimeSet = true;
+		} else if (arg == "--save-normal-maps") {
+			saveNormals = true;
 		}
 	}
 
@@ -52,6 +55,8 @@ int main(int argc, char *argv[])
 			w.scene()->setCameraForShot(camPos, camYaw, camPitch);
 		if (!focusName.isEmpty())
 			w.scene()->focusByName(focusName);
+		if (saveNormals)
+			w.scene()->setSaveNormalMaps(true);
 		w.scene()->requestScreenshot(shotPath, shotFrames);
 	}
 	w.show();

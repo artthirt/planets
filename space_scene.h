@@ -36,6 +36,7 @@ public:
     void setCameraForShot(const QVector3D &pos, float yawDeg, float pitchDeg);
     void setTimeForShot(double t); // jump the simulation clock (--time)
     void requestScreenshot(const QString &path, int frames);
+    void setSaveNormalMaps(bool on); // --save-normal-maps: dump generated maps to ./normal_maps
 
     // UI screenshot (F12): save the next painted frame, keep running
     void takeScreenshot(const QString &path);
@@ -61,6 +62,9 @@ protected:
 private:
     void buildScene();
     unsigned int uploadTexture(const QString &resPath);
+    unsigned int uploadQImage(const QImage &img);
+    // Sobel on albedo luminance -> tangent-space normal map (stage D12)
+    unsigned int makeNormalMap(const QImage &albedo, float steepness, QImage *outMap = nullptr);
 
     void updateOrbits();
     void updateCamera(float dt);
@@ -88,7 +92,7 @@ private:
     float m_maxAniso = 1.0f;
 
     // shader uniform locations (valid after bind())
-    struct PlanetUniforms { int model, view, proj, camPos, sunDir, sunColor, tex, spec, shin, occluders, occluderCount, sunAngle, ringCenter, ringNormal, ringInner, ringOuter, ringOn, ringTex; };
+    struct PlanetUniforms { int model, view, proj, camPos, sunDir, sunColor, tex, spec, shin, occluders, occluderCount, sunAngle, ringCenter, ringNormal, ringInner, ringOuter, ringOn, ringTex, normalMap, normalStrength; };
     struct SkyUniforms { int model, view, proj, camPos, sunDir, sunColor, skyTex; };
     struct AtmUniforms { int model, view, proj, camPos, center, planetR, shellR, sunDir, sunColor, atmColor, density, scaleH, tex, spin, time, noiseAmt, occluders, occluderCount, sunAngle, ringOn, ringCenter, ringNormal, ringInner, ringOuter, ringTex; };
     struct AtmFsUniforms { int invViewProj, camPos, center, planetR, shellR, sunDir, sunColor, atmColor, density, scaleH, tex, spin, time, noiseAmt, occluders, occluderCount, sunAngle, ringOn, ringCenter, ringNormal, ringInner, ringOuter, ringTex; };
@@ -125,4 +129,6 @@ private:
     int m_shotFramesLeft = 0;
     int m_shotCount = 0;
     bool m_quitAfterShot = false;   // CLI --screenshot quits; UI F12 keeps running
+    bool m_saveNormalMaps = false;  // dump runtime normal maps to ./normal_maps
+    QString m_pendingFocus;         // --focus given before buildScene (CLI)
 };
