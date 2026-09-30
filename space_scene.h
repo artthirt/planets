@@ -37,9 +37,14 @@ public:
     void setTimeForShot(double t); // jump the simulation clock (--time)
     void requestScreenshot(const QString &path, int frames);
 
+    // UI screenshot (F12): save the next painted frame, keep running
+    void takeScreenshot(const QString &path);
+
 signals:
     void focusChanged(const QString &bodyName);
     void infoChanged(const QString &text);
+    void screenshotRequested();                    // F12 pressed
+    void screenshotSaved(const QString &path);     // file written (or save failed)
 
 protected:
     void initializeGL() override;
@@ -119,4 +124,5 @@ private:
     QString m_shotPath;
     int m_shotFramesLeft = 0;
     int m_shotCount = 0;
+    bool m_quitAfterShot = false;   // CLI --screenshot quits; UI F12 keeps running
 };

@@ -23,6 +23,8 @@ private slots:
 	void on_hs_speed_valueChanged(int value);
 	void onSceneFocusChanged(const QString &body);
 	void onSceneInfo(const QString &info);
+	void onScreenshotRequested();
+	void onScreenshotSaved(const QString &path);
 
 private:
 	Ui::MainWindow *ui;

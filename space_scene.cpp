@@ -93,6 +93,15 @@ void SpaceScene::requestScreenshot(const QString &path, int frames)
     m_shotPath = path;
     m_shotFramesLeft = frames;
     m_shotCount = 0;
+    m_quitAfterShot = true; // CLI mode: quit after the shot
+}
+
+void SpaceScene::takeScreenshot(const QString &path)
+{
+    m_shotPath = path;
+    m_shotFramesLeft = 1;
+    m_shotCount = 0;
+    m_quitAfterShot = false; // UI mode: keep running after the shot
 }
 
 void SpaceScene::initializeGL()
@@ -969,14 +978,17 @@ void SpaceScene::saveScreenshot()
     flip.scale(1.0, -1.0);
     flip.translate(0.0, -h);
     img = img.transformed(flip);
-    if (img.save(m_shotPath))
+    const bool ok = img.save(m_shotPath);
+    if (ok)
         qInfo().noquote() << "screenshot saved:" << m_shotPath;
     else
         qWarning() << "screenshot save failed:" << m_shotPath;
+    emit screenshotSaved(m_shotPath);
     m_shotPath.clear();
-    // Quit from the event loop, not from inside paintGL: a direct quit() here
-    // crashes during window/context shutdown.
-    QTimer::singleShot(0, qApp, &QCoreApplication::quit);
+    // CLI mode quits; UI mode keeps running. Quit from the event loop, not from
+    // inside paintGL: a direct quit() here crashes during window/context shutdown.
+    if (m_quitAfterShot)
+        QTimer::singleShot(0, qApp, &QCoreApplication::quit);
 }
 
 void SpaceScene::mousePressEvent(QMouseEvent *e)
@@ -1036,6 +1048,8 @@ void SpaceScene::keyPressEvent(QKeyEvent *e)
         m_focusDist = 4.0f;
         emit focusChanged(QStringLiteral("free fly"));
         emit infoChanged(QStringLiteral("free fly — WASD fly, wheel zoom, M to cycle, click a body to track"));
+    } else if (e->key() == Qt::Key_F12) {
+        emit screenshotRequested();
     }
 }
 
