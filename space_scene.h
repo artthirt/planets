@@ -34,6 +34,7 @@ public:
 
     // hidden CLI helpers (screenshot mode)
     void setCameraForShot(const QVector3D &pos, float yawDeg, float pitchDeg);
+    void setTimeForShot(double t); // jump the simulation clock (--time)
     void requestScreenshot(const QString &path, int frames);
 
 signals:

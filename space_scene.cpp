@@ -82,6 +82,12 @@ void SpaceScene::setCameraForShot(const QVector3D &pos, float yawDeg, float pitc
     m_cam.clampPitch();
 }
 
+void SpaceScene::setTimeForShot(double t)
+{
+    m_time = float(t);
+    updateOrbits(); // place every body at the new time
+}
+
 void SpaceScene::requestScreenshot(const QString &path, int frames)
 {
     m_shotPath = path;
