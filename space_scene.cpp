@@ -1,6 +1,7 @@
 #include "space_scene.h"
 
 #include <QApplication>
+#include <QDir>
 #include <QImage>
 #include <QImageReader>
 #include <QMatrix4x4>
@@ -96,6 +97,11 @@ void SpaceScene::requestScreenshot(const QString &path, int frames)
     m_quitAfterShot = true; // CLI mode: quit after the shot
 }
 
+void SpaceScene::setSaveNormalMaps(bool on)
+{
+    m_saveNormalMaps = on;
+}
+
 void SpaceScene::takeScreenshot(const QString &path)
 {
     m_shotPath = path;
@@ -143,8 +149,13 @@ unsigned int SpaceScene::uploadTexture(const QString &resPath)
         qWarning() << "SpaceScene: cannot load texture" << resPath;
         return 0;
     }
+    return uploadQImage(img);
+}
+
+unsigned int SpaceScene::uploadQImage(const QImage &imgIn)
+{
     // JPEG decodes to RGB32 (memory layout BGRA), PNGs vary -> normalize
-    img = img.convertToFormat(QImage::Format_RGBA8888);
+    const QImage img = imgIn.convertToFormat(QImage::Format_RGBA8888);
 
     GLuint tex = 0;
     glGenTextures(1, &tex);
@@ -161,6 +172,50 @@ unsigned int SpaceScene::uploadTexture(const QString &resPath)
 
     m_textures.push_back(tex);
     return tex;
+}
+
+// Sobel on the albedo luminance -> tangent-space normal map (stage D12).
+// Convention matches standard authored maps: R ~ -dh/du, G ~ -dh/dv, where
+// u = image x and v = image y (top row = v = 0 = north pole). The u axis
+// wraps (equirect seam), v clamps at the poles.
+unsigned int SpaceScene::makeNormalMap(const QImage &albedo, float steepness, QImage *outMap)
+{
+    const QImage src = albedo.convertToFormat(QImage::Format_RGB32);
+    const int w = src.width();
+    const int h = src.height();
+
+    auto luma = [&](int x, int y) -> float {
+        x = ((x % w) + w) % w;
+        y = std::clamp(y, 0, h - 1);
+        const QRgb p = reinterpret_cast<const QRgb *>(src.constScanLine(y))[x];
+        return 0.299f * float((p >> 16) & 0xff)
+             + 0.587f * float((p >> 8) & 0xff)
+             + 0.114f * float(p & 0xff);
+    };
+
+    // NOTE: Format_RGB32, not RGBA8888 — a raw QRgb* store into RGBA8888
+    // writes the value byte-swapped (that format stores 0xAABBGGRR), which
+    // silently swaps R and B in both the PNG dump and the GL upload.
+    QImage out(w, h, QImage::Format_RGB32);
+    for (int y = 0; y < h; ++y) {
+        QRgb *row = reinterpret_cast<QRgb *>(out.scanLine(y));
+        for (int x = 0; x < w; ++x) {
+            // Central difference on the 0..1-normalized height. The raw 0..255
+            // difference is ~255x too large: with it, any visible albedo detail
+            // tilted the normal to nearly horizontal (the "overexposed" look).
+            const float dx = (luma(x + 1, y) - luma(x - 1, y)) / 255.0f; // dh/du
+            const float dy = (luma(x, y + 1) - luma(x, y - 1)) / 255.0f; // dh/dv
+            QVector3D n(-dx * steepness, -dy * steepness, 1.0f);
+            n.normalize();
+            row[x] = qRgba(qBound(0, int(n.x() * 127.5f + 128.0f), 255),
+                           qBound(0, int(n.y() * 127.5f + 128.0f), 255),
+                           qBound(0, int(n.z() * 127.5f + 128.0f), 255),
+                           255);
+        }
+    }
+    if (outMap)
+        *outMap = out;
+    return uploadQImage(out);
 }
 
 void SpaceScene::buildScene()
@@ -197,6 +252,8 @@ void SpaceScene::buildScene()
     m_pu.ringOuter = m_planetProg->uniformLocation("uRingOuter");
     m_pu.ringOn = m_planetProg->uniformLocation("uRingOn");
     m_pu.ringTex = m_planetProg->uniformLocation("uRingTex");
+    m_pu.normalMap = m_planetProg->uniformLocation("uNormalMap");
+    m_pu.normalStrength = m_planetProg->uniformLocation("uNormalStrength");
     m_planetProg->release();
 
     m_skyProg->bind();
@@ -234,6 +291,7 @@ void SpaceScene::buildScene()
     m_au.scaleH = m_atmProg->uniformLocation("uScaleH");
     m_au.tex = m_atmProg->uniformLocation("uTex");
     m_au.spin = m_atmProg->uniformLocation("uSpin");
+    m_au.tilt = m_atmProg->uniformLocation("uTilt");
     m_au.time = m_atmProg->uniformLocation("uTime");
     m_au.noiseAmt = m_atmProg->uniformLocation("uNoiseAmt");
     m_au.occluders = m_atmProg->uniformLocation("uOccluders[0]");
@@ -260,6 +318,7 @@ void SpaceScene::buildScene()
     m_afu.scaleH = m_atmFsProg->uniformLocation("uScaleH");
     m_afu.tex = m_atmFsProg->uniformLocation("uTex");
     m_afu.spin = m_atmFsProg->uniformLocation("uSpin");
+    m_afu.tilt = m_atmFsProg->uniformLocation("uTilt");
     m_afu.time = m_atmFsProg->uniformLocation("uTime");
     m_afu.noiseAmt = m_atmFsProg->uniformLocation("uNoiseAmt");
     m_afu.occluders = m_atmFsProg->uniformLocation("uOccluders[0]");
@@ -364,6 +423,7 @@ void SpaceScene::buildScene()
         io.orbitPhaseDeg = 200.0f;
         io.spinPeriodDeg = 10.0f;
         io.specularStrength = 0.1f;
+        io.generateNormal = true; // D12: relief from albedo luminance
         m_bodies.push_back(io);
     }
     {
@@ -378,6 +438,7 @@ void SpaceScene::buildScene()
         eu.spinPeriodDeg = 8.0f;
         eu.specularStrength = 0.25f;
         eu.shininess = 48.0f;
+        eu.generateNormal = true;
         m_bodies.push_back(eu);
     }
     {
@@ -390,6 +451,7 @@ void SpaceScene::buildScene()
         ce.orbitPhaseDeg = 320.0f;
         ce.orbitInclDeg = -6.0f;
         ce.spinPeriodDeg = 14.0f;
+        ce.generateNormal = true;
         m_bodies.push_back(ce);
     }
     {
@@ -403,6 +465,7 @@ void SpaceScene::buildScene()
         ga.orbitInclDeg = 2.0f;
         ga.spinPeriodDeg = 6.0f;
         ga.specularStrength = 0.05f;
+        ga.generateNormal = true;
         m_bodies.push_back(ga);
     }
     {
@@ -415,6 +478,7 @@ void SpaceScene::buildScene()
         ca.orbitPhaseDeg = 130.0f;
         ca.orbitInclDeg = -3.0f;
         ca.spinPeriodDeg = 5.0f;
+        ca.generateNormal = true;
         m_bodies.push_back(ca);
     }
     {
@@ -470,6 +534,7 @@ void SpaceScene::buildScene()
         ti.parent = (int)m_bodies.size() - 1; // Saturn
         ti.spinPeriodDeg = 1.5f;
         ti.specularStrength = 0.0f;
+        ti.generateNormal = true;
         // Titan's famous thick orange haze: small shell, so the base
         // density must be high to reach a limb optical depth ~1
         ti.atmosphereOn = true;
@@ -481,13 +546,37 @@ void SpaceScene::buildScene()
         m_bodies.push_back(ti);
     }
 
+    const bool dumpNormals = m_saveNormalMaps;
+    if (dumpNormals)
+        QDir().mkpath(QStringLiteral("normal_maps"));
     for (Body &b : m_bodies) {
         b.texId = uploadTexture(b.texture);
+        if (b.generateNormal) {
+            QImage alb;
+            if (alb.load(b.texture)) {
+                QImage nm;
+                b.normalTexId = makeNormalMap(alb, 3.0f, &nm);
+                if (dumpNormals) {
+                    const QString p = QStringLiteral("normal_maps/%1_normal.png").arg(b.name.toLower());
+                    if (!nm.save(p))
+                        qWarning() << "SpaceScene: cannot save" << p;
+                }
+            } else
+                qWarning() << "SpaceScene: cannot derive normal map from" << b.texture;
+        }
         if (b.ringOn)
             b.ringTexId = uploadTexture(b.ringTexture);
     }
 
     updateOrbits();
+
+    // CLI focus request: main() runs before buildScene (m_bodies empty then),
+    // so a --focus name is stored and applied here instead
+    if (!m_pendingFocus.isEmpty()) {
+        const QString f = m_pendingFocus;
+        m_pendingFocus.clear();
+        focusByName(f);
+    }
 }
 
 void SpaceScene::updateOrbits()
@@ -582,6 +671,8 @@ void SpaceScene::focusByName(const QString &name)
             return;
         }
     }
+    if (m_bodies.empty())
+        m_pendingFocus = name; // CLI ran before buildScene: apply there
 }
 
 // Ray-pick a body under the given (logical) screen pixel.
@@ -696,6 +787,8 @@ void SpaceScene::drawBody(size_t i, const QMatrix4x4 &proj, const QMatrix4x4 &vi
 
     QMatrix4x4 model;
     model.translate(b.position);
+    if (b.ringOn)
+        model.rotate(b.ringTiltDeg, 1.0f, 0.0f, 0.0f); // tilt the spin axis like the ring plane (local Y -> (0,cos t,sin t))
     model.rotate(m_time * b.spinPeriodDeg, 0.0f, 1.0f, 0.0f);
     model.scale(b.radius);
 
@@ -747,6 +840,16 @@ void SpaceScene::drawBody(size_t i, const QMatrix4x4 &proj, const QMatrix4x4 &vi
         glUniform1i(m_pu.ringOn, 0);
     }
 
+    // bump/normal mapping (stage D12): generated from the albedo luminance
+    if (b.generateNormal && b.normalTexId && b.normalStrength > 0.0f) {
+        glUniform1i(m_pu.normalMap, 2);
+        glUniform1f(m_pu.normalStrength, b.normalStrength);
+        glActiveTexture(GL_TEXTURE2);
+        glBindTexture(GL_TEXTURE_2D, b.normalTexId);
+    } else {
+        glUniform1f(m_pu.normalStrength, 0.0f);
+    }
+
     m_sphere->draw();
 
     m_planetProg->release();
@@ -793,6 +896,7 @@ void SpaceScene::drawAtmosphere(size_t i, const QMatrix4x4 &proj, const QMatrix4
         glUniform1f(m_afu.density, b.atmosphereDensity);
         glUniform1f(m_afu.scaleH, scaleH);
         glUniform1f(m_afu.spin, m_time * b.spinPeriodDeg * 0.017453293f);
+        glUniform1f(m_afu.tilt, b.ringOn ? deg2rad(b.ringTiltDeg) : 0.0f);
         glUniform1f(m_afu.time, m_time);
         glUniform1f(m_afu.noiseAmt, b.atmosphereNoise);
         glUniform4fv(m_afu.occluders, 16, occ);
@@ -834,6 +938,7 @@ void SpaceScene::drawAtmosphere(size_t i, const QMatrix4x4 &proj, const QMatrix4
         glUniform1f(m_au.density, b.atmosphereDensity);
         glUniform1f(m_au.scaleH, scaleH);
         glUniform1f(m_au.spin, m_time * b.spinPeriodDeg * 0.017453293f);
+        glUniform1f(m_au.tilt, b.ringOn ? deg2rad(b.ringTiltDeg) : 0.0f);
         glUniform1f(m_au.time, m_time);
         glUniform1f(m_au.noiseAmt, b.atmosphereNoise);
         glUniform4fv(m_au.occluders, 16, occ);

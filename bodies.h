@@ -24,6 +24,10 @@ struct Body
     float specularStrength = 0.05f;
     float shininess = 16.0f;
 
+    // bump/normal mapping (stage D12)
+    bool generateNormal = false;   // derive a normal map from albedo luminance
+    float normalStrength = 1.0f;   // shader intensity of the normal map
+
     // atmosphere (stage C: raymarched gas shell)
     bool atmosphereOn = false;
     QVector3D atmosphereColor{0.30f, 0.52f, 1.0f};
@@ -43,4 +47,5 @@ struct Body
     QVector3D position;
     unsigned int texId = 0;
     unsigned int ringTexId = 0;
+    unsigned int normalTexId = 0;
 };

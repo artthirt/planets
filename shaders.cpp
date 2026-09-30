@@ -57,6 +57,8 @@ uniform float uRingInner;  // annulus radii, world units
 uniform float uRingOuter;
 uniform int uRingOn;       // 1 = the body has a ring that can shadow it
 uniform sampler2D uRingTex;
+uniform sampler2D uNormalMap;   // tangent-space normal map (texture unit 2)
+uniform float uNormalStrength;  // 0 = flat shading (no bump)
 
 // How much of the direct sunlight does the body's own ring block at p?
 // The ring is a flat annulus, so its shadow is a sharp band: the ray
@@ -120,9 +122,38 @@ float sunShadowAtt(vec3 p, vec3 L)
 
 void main()
 {
-    vec3 N = normalize(vNormal);
+    vec3 Ngeo = normalize(vNormal);
     vec3 V = normalize(uCamPos - vWorldPos);
     vec3 L = normalize(uSunDir);
+
+    // Tangent-space bump/normal mapping (stage D12). The frame is built from
+    // screen-space derivatives: T ~ dP/du, B ~ dP/dv (the parameterization
+    // directions, not cross(N,T) — this sphere is left-handed in (u,v)). The
+    // maps use the standard encoding (R ~ -dh/du, G ~ -dh/dv), so both the
+    // authored maps and the ones generated from albedo luminance work as-is.
+    vec3 N = Ngeo;
+    if (uNormalStrength > 0.0) {
+        vec3 dpdx = dFdx(vWorldPos);
+        vec3 dpdy = dFdy(vWorldPos);
+        vec2 duvdx = dFdx(vTex);
+        vec2 duvdy = dFdy(vTex);
+        float det = duvdx.x * duvdy.y - duvdx.y * duvdy.x;
+        vec3 T, B;
+        if (abs(det) > 1e-10) {
+            T = (duvdy.y * dpdx - duvdx.y * dpdy) / det;
+            B = (duvdx.x * dpdy - duvdy.x * dpdx) / det;
+            T = normalize(T - Ngeo * dot(T, Ngeo));
+            B = normalize(B - Ngeo * dot(B, Ngeo));
+        } else {
+            // degenerate pixel (e.g. collapsed pole row): any tangent frame
+            vec3 f = abs(Ngeo.y) < 0.99 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0);
+            T = normalize(cross(f, Ngeo));
+            B = cross(Ngeo, T);
+        }
+        vec3 nm = texture(uNormalMap, vTex).rgb * 2.0 - 1.0;
+        nm.xy *= uNormalStrength;
+        N = normalize(T * nm.x + B * nm.y + Ngeo * nm.z);
+    }
 
     // NOTE: no `const` on runtime-initialized locals — in GLSL that requires a
     // compile-time constant expression (error C1059 on NVIDIA).
@@ -211,7 +242,8 @@ uniform vec3 uAtmColor;
 uniform float uDensity;    // base optical density at the surface
 uniform float uScaleH;     // exponential scale height (world units)
 uniform sampler2D uTex;    // planet surface texture: luminance masks the gas
-uniform float uSpin;       // planet spin angle, radians (world Y)
+uniform float uSpin;       // planet spin angle, radians (around the tilted axis)
+uniform float uTilt;       // spin-axis tilt around X, radians (0 for ringless bodies)
 uniform float uTime;       // scene time, drives the slow gas drift
 uniform float uNoiseAmt;   // 0..1, FBM detail amount (0 = smooth gas)
 uniform vec4 uOccluders[16]; // solid bodies: xyz center, w radius (sun shadows)
@@ -383,8 +415,11 @@ void main()
             // texture luminance can mask the gas: bright cloud tops carry
             // denser atmosphere; FBM adds drifting structure on top
             vec3 d = (p - uCenter) / (h + uPlanetR);
+            // un-tilt the spin axis (around X, like the ring), then un-spin
+            float ct = cos(uTilt), st = sin(uTilt);
+            vec3 dt = vec3(d.x, ct * d.y + st * d.z, -st * d.y + ct * d.z);
             float cs = cos(uSpin), sn = sin(uSpin);
-            vec3 q = vec3(cs * d.x - sn * d.z, d.y, sn * d.x + cs * d.z);
+            vec3 q = vec3(cs * dt.x - sn * dt.z, dt.y, sn * dt.x + cs * dt.z);
             vec2 tuv = vec2(atan(q.x, q.z) * 0.15915494 + 0.5,
                             acos(clamp(q.y, -1.0, 1.0)) * 0.31830989);
             float luma = dot(texture(uTex, tuv).rgb, vec3(0.299, 0.587, 0.114));
