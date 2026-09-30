@@ -413,7 +413,7 @@ void SpaceScene::buildScene()
         ur.name = "Uranus";
         ur.radius = 56.0f;
         ur.texture = ":/data/uranus.jpg";
-        ur.orbitRadius = 1440.0f;  // system expanded 1.6x (D5)
+        ur.orbitRadius = 2400.0f;  // D10: further out, clears Saturn's Titan orbit
         ur.orbitPeriod = 2880.0f;  // ~48 min at 1x time
         ur.orbitPhaseDeg = 240.0f;
         ur.orbitInclDeg = 0.0f;   // planets stay in the ecliptic (sun's) plane
@@ -430,10 +430,10 @@ void SpaceScene::buildScene()
         sa.name = "Saturn";
         sa.radius = 115.0f;
         sa.texture = ":/data/8k_saturn.jpg";
-        sa.orbitRadius = 2080.0f;  // system expanded 1.6x (D5)
-        sa.orbitPeriod = 4320.0f;
-        sa.orbitPhaseDeg = 60.0f;
-        sa.orbitInclDeg = 0.0f;   // planets stay in the ecliptic (sun's) plane
+        // D10: static backdrop (orbitRadius 0 = fixed position) — the system
+        // was expanded so Saturn/Uranus orbits no longer crowd each other
+        sa.orbitRadius = 0.0f;
+        sa.position = QVector3D(1800.0f, 0.0f, 3118.0f); // 3600 out at 60 deg, ecliptic plane
         sa.spinPeriodDeg = 8.0f; // fastest spinner in the scene
         sa.specularStrength = 0.0f;
         // pale golden haze: shell hugs the surface (default 1.05), inside the
