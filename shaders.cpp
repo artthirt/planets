@@ -242,7 +242,8 @@ uniform vec3 uAtmColor;
 uniform float uDensity;    // base optical density at the surface
 uniform float uScaleH;     // exponential scale height (world units)
 uniform sampler2D uTex;    // planet surface texture: luminance masks the gas
-uniform float uSpin;       // planet spin angle, radians (world Y)
+uniform float uSpin;       // planet spin angle, radians (around the tilted axis)
+uniform float uTilt;       // spin-axis tilt around X, radians (0 for ringless bodies)
 uniform float uTime;       // scene time, drives the slow gas drift
 uniform float uNoiseAmt;   // 0..1, FBM detail amount (0 = smooth gas)
 uniform vec4 uOccluders[16]; // solid bodies: xyz center, w radius (sun shadows)
@@ -414,8 +415,11 @@ void main()
             // texture luminance can mask the gas: bright cloud tops carry
             // denser atmosphere; FBM adds drifting structure on top
             vec3 d = (p - uCenter) / (h + uPlanetR);
+            // un-tilt the spin axis (around X, like the ring), then un-spin
+            float ct = cos(uTilt), st = sin(uTilt);
+            vec3 dt = vec3(d.x, ct * d.y + st * d.z, -st * d.y + ct * d.z);
             float cs = cos(uSpin), sn = sin(uSpin);
-            vec3 q = vec3(cs * d.x - sn * d.z, d.y, sn * d.x + cs * d.z);
+            vec3 q = vec3(cs * dt.x - sn * dt.z, dt.y, sn * dt.x + cs * dt.z);
             vec2 tuv = vec2(atan(q.x, q.z) * 0.15915494 + 0.5,
                             acos(clamp(q.y, -1.0, 1.0)) * 0.31830989);
             float luma = dot(texture(uTex, tuv).rgb, vec3(0.299, 0.587, 0.114));

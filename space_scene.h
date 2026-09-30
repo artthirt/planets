@@ -94,8 +94,8 @@ private:
     // shader uniform locations (valid after bind())
     struct PlanetUniforms { int model, view, proj, camPos, sunDir, sunColor, tex, spec, shin, occluders, occluderCount, sunAngle, ringCenter, ringNormal, ringInner, ringOuter, ringOn, ringTex, normalMap, normalStrength; };
     struct SkyUniforms { int model, view, proj, camPos, sunDir, sunColor, skyTex; };
-    struct AtmUniforms { int model, view, proj, camPos, center, planetR, shellR, sunDir, sunColor, atmColor, density, scaleH, tex, spin, time, noiseAmt, occluders, occluderCount, sunAngle, ringOn, ringCenter, ringNormal, ringInner, ringOuter, ringTex; };
-    struct AtmFsUniforms { int invViewProj, camPos, center, planetR, shellR, sunDir, sunColor, atmColor, density, scaleH, tex, spin, time, noiseAmt, occluders, occluderCount, sunAngle, ringOn, ringCenter, ringNormal, ringInner, ringOuter, ringTex; };
+    struct AtmUniforms { int model, view, proj, camPos, center, planetR, shellR, sunDir, sunColor, atmColor, density, scaleH, tex, spin, tilt, time, noiseAmt, occluders, occluderCount, sunAngle, ringOn, ringCenter, ringNormal, ringInner, ringOuter, ringTex; };
+    struct AtmFsUniforms { int invViewProj, camPos, center, planetR, shellR, sunDir, sunColor, atmColor, density, scaleH, tex, spin, tilt, time, noiseAmt, occluders, occluderCount, sunAngle, ringOn, ringCenter, ringNormal, ringInner, ringOuter, ringTex; };
     struct RingUniforms { int model, view, proj, sunDir, sunColor, center, planetR, tex; };
     PlanetUniforms m_pu{};
     SkyUniforms m_su{};

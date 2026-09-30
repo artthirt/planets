@@ -291,6 +291,7 @@ void SpaceScene::buildScene()
     m_au.scaleH = m_atmProg->uniformLocation("uScaleH");
     m_au.tex = m_atmProg->uniformLocation("uTex");
     m_au.spin = m_atmProg->uniformLocation("uSpin");
+    m_au.tilt = m_atmProg->uniformLocation("uTilt");
     m_au.time = m_atmProg->uniformLocation("uTime");
     m_au.noiseAmt = m_atmProg->uniformLocation("uNoiseAmt");
     m_au.occluders = m_atmProg->uniformLocation("uOccluders[0]");
@@ -317,6 +318,7 @@ void SpaceScene::buildScene()
     m_afu.scaleH = m_atmFsProg->uniformLocation("uScaleH");
     m_afu.tex = m_atmFsProg->uniformLocation("uTex");
     m_afu.spin = m_atmFsProg->uniformLocation("uSpin");
+    m_afu.tilt = m_atmFsProg->uniformLocation("uTilt");
     m_afu.time = m_atmFsProg->uniformLocation("uTime");
     m_afu.noiseAmt = m_atmFsProg->uniformLocation("uNoiseAmt");
     m_afu.occluders = m_atmFsProg->uniformLocation("uOccluders[0]");
@@ -785,6 +787,8 @@ void SpaceScene::drawBody(size_t i, const QMatrix4x4 &proj, const QMatrix4x4 &vi
 
     QMatrix4x4 model;
     model.translate(b.position);
+    if (b.ringOn)
+        model.rotate(b.ringTiltDeg, 1.0f, 0.0f, 0.0f); // tilt the spin axis like the ring plane (local Y -> (0,cos t,sin t))
     model.rotate(m_time * b.spinPeriodDeg, 0.0f, 1.0f, 0.0f);
     model.scale(b.radius);
 
@@ -892,6 +896,7 @@ void SpaceScene::drawAtmosphere(size_t i, const QMatrix4x4 &proj, const QMatrix4
         glUniform1f(m_afu.density, b.atmosphereDensity);
         glUniform1f(m_afu.scaleH, scaleH);
         glUniform1f(m_afu.spin, m_time * b.spinPeriodDeg * 0.017453293f);
+        glUniform1f(m_afu.tilt, b.ringOn ? deg2rad(b.ringTiltDeg) : 0.0f);
         glUniform1f(m_afu.time, m_time);
         glUniform1f(m_afu.noiseAmt, b.atmosphereNoise);
         glUniform4fv(m_afu.occluders, 16, occ);
@@ -933,6 +938,7 @@ void SpaceScene::drawAtmosphere(size_t i, const QMatrix4x4 &proj, const QMatrix4
         glUniform1f(m_au.density, b.atmosphereDensity);
         glUniform1f(m_au.scaleH, scaleH);
         glUniform1f(m_au.spin, m_time * b.spinPeriodDeg * 0.017453293f);
+        glUniform1f(m_au.tilt, b.ringOn ? deg2rad(b.ringTiltDeg) : 0.0f);
         glUniform1f(m_au.time, m_time);
         glUniform1f(m_au.noiseAmt, b.atmosphereNoise);
         glUniform4fv(m_au.occluders, 16, occ);
